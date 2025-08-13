@@ -1,0 +1,55 @@
+# Build directories
+ALL_BUILD/
+uninstall/
+Products/
+Frameworks/
+cmake/
+build/
+out/
+bin/
+lib/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# IDE specific files
+.vs/
+.vscode/
+*.xcodeproj/
+*.xcworkspace/
+*.sln
+*.vcxproj*
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Compiled files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+
+# Debug files
+*.pdb
+*.ilk
+*.idb
+
+# Temporary files
+*.tmp
+*.temp
+*.log
