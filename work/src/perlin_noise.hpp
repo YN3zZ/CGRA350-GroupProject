@@ -16,6 +16,6 @@ public:
 
 	perlin_noise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
-	float generateNoise(glm::vec2 pos);
+	float generateNoise(glm::vec2 pos, int octave);
 	float generatePerlinNoise(glm::vec2 pos);
 };
