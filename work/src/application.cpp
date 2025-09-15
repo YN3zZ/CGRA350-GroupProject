@@ -45,7 +45,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
 	m_model = perlin_noise();
 	m_model.shader = shader;
-	m_model.color = vec3(1, 0, 0);
+	m_model.color = vec3(0.5f, 0.8f, 0.3f);
 }
 
 

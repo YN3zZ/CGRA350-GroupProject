@@ -18,11 +18,26 @@ void perlin_noise::draw(const mat4& view, const mat4& proj) {
 	glUseProgram(shader);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
+
+	// Visualise noise temporarily with spheres.
+	for (int i = 0; i < 100; i++) {
+		for (int j = 0; j < 100; j++) {
+			float x = i / 6.0f;
+			float z = j / 6.0f;
+			// Transform height of sphere by noise at position.
+			vec2 pos(x, z);
+			float height = generatePerlinNoise(pos, 6, 0.8f, 4.0f);
+			mat4 transform = translate(mat4(1.0f), vec3(x, height * 4, z)) *
+							scale(mat4(1.0f), vec3(0.08f));
+			glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * transform));
+			drawSphere();
+		}
+	}
 	
 }
 
 inline vec2 smoothstep(vec2 t) {
-	return t * t * (vec2(3.0f) - 2.0f * t);
+	return t * t * (3.0f - 2.0f * t);
 }
 
 inline float random(vec2 p) {
