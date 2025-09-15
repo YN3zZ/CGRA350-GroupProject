@@ -13,6 +13,7 @@ public:
 	GLuint shader = 0;
 	glm::vec3 color{ 0.7f };
 	glm::mat4 modelTransform{ 1.0f };
+	float persistence = 0.5f;
 
 	perlin_noise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
