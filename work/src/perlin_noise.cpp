@@ -22,18 +22,17 @@ void perlin_noise::draw(const mat4& view, const mat4& proj) {
 	// Visualise noise temporarily with spheres.
 	for (int i = 0; i < 100; i++) {
 		for (int j = 0; j < 100; j++) {
-			float x = i / 6.0f;
-			float z = j / 6.0f;
+			float x = i / noiseSpread;
+			float z = j / noiseSpread;
 			// Transform height of sphere by noise at position.
 			vec2 pos(x, z);
-			float height = generatePerlinNoise(pos, 6, persistence, 4.0f);
-			mat4 transform = translate(mat4(1.0f), vec3(x, height * 4, z)) *
+			float height = generatePerlinNoise(pos, noiseOctaves, noisePersistence, noiseAmplitude);
+			mat4 transform = translate(mat4(1.0f), vec3(x, height, z)) *
 							scale(mat4(1.0f), vec3(0.08f));
 			glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * transform));
 			drawSphere();
 		}
 	}
-	
 }
 
 inline vec2 smoothstep(vec2 t) {
@@ -57,31 +56,17 @@ inline vec2 randGradient(vec2 v) {
 float perlin_noise::generateNoise(vec2 pos) {
 	// Use fractional component of position to make it smoother closer to vertices.
 	vec2 gridPos = floor(pos);
-	vec2 posFrac = pos - gridPos;
+	vec2 posFrac = pos - gridPos + 1e-3f;
 	vec2 smooth = smoothstep(posFrac);
 
 	// Gradients of the four grid corners relative to this position.
-	vec2 gBL = randGradient(gridPos);
-	vec2 gBR = randGradient(gridPos + vec2(1, 0));
-	vec2 gTL = randGradient(gridPos + vec2(0, 1));
-	vec2 gTR = randGradient(gridPos + vec2(1, 1));
+	float bl = dot(randGradient(gridPos), posFrac);
+	float br = dot(randGradient(gridPos + vec2(1, 0)), posFrac - vec2(1, 0));
+	float tl = dot(randGradient(gridPos + vec2(0, 1)), posFrac - vec2(0, 1));
+	float tr = dot(randGradient(gridPos + vec2(1, 1)), posFrac - vec2(1, 1));
 
-	// Vectors from corners to point.
-	vec2 dBL = posFrac;
-	vec2 dBR = posFrac - vec2(1, 0);
-	vec2 dTL = posFrac - vec2(0, 1);
-	vec2 dTR = posFrac - vec2(1, 1);
-
-	// Dot products for gradient influence (allows smoothing).
-	float s = dot(gBL, dBL);
-	float t = dot(gBR, dBR);
-	float u = dot(gTL, dTL);
-	float v = dot(gTR, dTR);
-
-	// Bilinear interpolation using smooth/fade
-	float lerpX1 = mix(s, t, smooth.x);
-	float lerpX2 = mix(u, v, smooth.x);
-	return mix(lerpX1, lerpX2, smooth.y);
+	// Bilinear interpolation using smooth/fade.
+	return lerp(lerp(bl, br, smooth.x), lerp(tl, tr, smooth.x), smooth.y);
 }
 
 float perlin_noise::generatePerlinNoise(vec2 pos, int octaves, float persistence, float amplitude) {
@@ -92,9 +77,11 @@ float perlin_noise::generatePerlinNoise(vec2 pos, int octaves, float persistence
 	for (int oct = 0; oct < octaves; oct++) {
 		float frequency = pow(2, oct);
 		overallNoise += generateNoise(pos * frequency) * height;
-		height *= persistence;
 		totalHeight += height;
+		height *= persistence;
 	}
 	// Normalise then scale by amplitude.
-	return overallNoise / totalHeight * amplitude;
+	float normalizedHeight = overallNoise / totalHeight;
+	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * amplitude; // Map back to positive range.
+	return finalHeight;
 }

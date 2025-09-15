@@ -86,8 +86,6 @@ void Application::render() {
 }
 
 
-static float persistence = 0.5f;
-
 void Application::renderGUI() {
 
 	// setup window
@@ -112,9 +110,10 @@ void Application::renderGUI() {
 	
 	ImGui::Separator();
 
-	if (ImGui::SliderFloat("Persistence", &persistence, 0.01f, 1.0f, "%.2f")) {
-		m_model.persistence = persistence;
-	}
+	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 1.0f, "%.2f");
+	ImGui::SliderFloat("Amplitude", &m_model.noiseAmplitude, 0.1f, 10.0f, "%.2f");
+	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.2f");
+	ImGui::SliderFloat("Spread", &m_model.noiseSpread, 0.1f, 10.0f, "%.2f");
 
 	// finish creating window
 	ImGui::End();
