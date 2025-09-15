@@ -18,6 +18,7 @@ void perlin_noise::draw(const mat4& view, const mat4& proj) {
 	glUseProgram(shader);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
+	
 }
 
 inline vec2 smoothstep(vec2 t) {
@@ -33,20 +34,32 @@ inline float random(vec2 p) {
 }
 
 // Inspiration from: https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
-float perlin_noise::generateNoise(vec2 pos, int octave) {
+float perlin_noise::generateNoise(vec2 pos) {
 	// Use fractional component of position to make it smoother closer to vertices.
 	vec2 gridPos = floor(pos);
 	vec2 posFrac = pos - gridPos;
 	vec2 smooth = smoothstep(posFrac);
 
-	// The four corners relative to this position.
+	// The four grid corners relative to this position.
 	float bl = random(gridPos);
-	float br = random(gridPos + vec2(octave, 0));
-	float tl = random(gridPos + vec2(0, octave));
-	float tr = random(gridPos + vec2(octave, octave));
+	float br = random(gridPos + vec2(1, 0));
+	float tl = random(gridPos + vec2(0, 1));
+	float tr = random(gridPos + vec2(1, 1));
 	
 	return lerp(lerp(bl, br, smooth.x), lerp(tl, tr, smooth.x), smooth.y);
 }
 
-float perlin_noise::generatePerlinNoise(vec2 pos) {
+float perlin_noise::generatePerlinNoise(vec2 pos, int octaves, float persistence, float amplitude) {
+	// Create perlin noise by combining noise octaves of doubling frequency and halving amplitude.
+	float overallNoise = 0.0f;
+	float height = 1.0f;
+	float totalHeight = 0;
+	for (int oct = 0; oct < octaves; oct++) {
+		float frequency = pow(2, oct);
+		overallNoise += generateNoise(pos * frequency) * height;
+		height *= persistence;
+		totalHeight += height;
+	}
+	// Normalise then scale by amplitude.
+	return overallNoise / totalHeight * amplitude;
 }
