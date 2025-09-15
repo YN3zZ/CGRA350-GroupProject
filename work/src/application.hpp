@@ -9,6 +9,7 @@
 #include "opengl.hpp"
 #include "cgra/cgra_mesh.hpp"
 #include "skeleton_model.hpp"
+#include "perlin_noise.hpp"
 
 
 // Basic model that holds the shader, mesh and transform for drawing.
@@ -48,7 +49,7 @@ private:
 	bool m_showWireframe = false;
 
 	// geometry
-	basic_model m_model;
+	perlin_noise m_model;
 
 public:
 	// setup

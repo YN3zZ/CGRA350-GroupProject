@@ -15,6 +15,7 @@
 #include "cgra/cgra_image.hpp"
 #include "cgra/cgra_shader.hpp"
 #include "cgra/cgra_wavefront.hpp"
+#include "perlin_noise.hpp"
 
 
 using namespace std;
@@ -33,6 +34,7 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 	mesh.draw(); // draw
 }
 
+perlin_noise noise;
 
 Application::Application(GLFWwindow *window) : m_window(window) {
 	
@@ -41,8 +43,8 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
 	GLuint shader = sb.build();
 
+	m_model = perlin_noise();
 	m_model.shader = shader;
-	// m_model.mesh = load_wavefront_data(CGRA_SRCDIR + std::string("/res//assets//teapot.obj")).build();
 	m_model.color = vec3(1, 0, 0);
 }
 
