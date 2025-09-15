@@ -3,7 +3,6 @@ ALL_BUILD/
 uninstall/
 Products/
 Frameworks/
-cmake/
 build/
 out/
 bin/
@@ -16,6 +15,7 @@ cmake_install.cmake
 Makefile
 *.cmake
 !CMakeLists.txt
+!CGRAFunctions.cmake
 
 # IDE specific files
 .vs/
