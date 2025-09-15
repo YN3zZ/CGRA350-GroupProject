@@ -26,7 +26,7 @@ void perlin_noise::draw(const mat4& view, const mat4& proj) {
 			float z = j / 6.0f;
 			// Transform height of sphere by noise at position.
 			vec2 pos(x, z);
-			float height = generatePerlinNoise(pos, 6, 0.8f, 4.0f);
+			float height = generatePerlinNoise(pos, 6, persistence, 4.0f);
 			mat4 transform = translate(mat4(1.0f), vec3(x, height * 4, z)) *
 							scale(mat4(1.0f), vec3(0.08f));
 			glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * transform));
