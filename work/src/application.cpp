@@ -86,6 +86,8 @@ void Application::render() {
 }
 
 
+static float persistence = 0.5f;
+
 void Application::renderGUI() {
 
 	// setup window
@@ -110,10 +112,8 @@ void Application::renderGUI() {
 	
 	ImGui::Separator();
 
-	// example of how to use input boxes
-	static float exampleInput;
-	if (ImGui::InputFloat("example input", &exampleInput)) {
-		cout << "example input changed to " << exampleInput << endl;
+	if (ImGui::SliderFloat("Persistence", &persistence, 0.01f, 1.0f, "%.2f")) {
+		m_model.persistence = persistence;
 	}
 
 	// finish creating window
