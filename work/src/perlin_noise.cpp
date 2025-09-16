@@ -41,9 +41,18 @@ gl_mesh PerlinNoise::createMesh() {
 			// Position, normal and uv of the vertex. Height is based on noise.
 			float height = generatePerlinNoise(vec2(x, z));
 			vec3 pos(x, height, z);
-			vec3 norm(0, 1.0f, 0); // TODO: Interpolate based on angle between neighbours.
 			vec2 uv(u, v);
 
+			// Interpolate normal from slope angle between close neighbours in x and z directions.
+			float delta = 0.05f; // TODO: make delta scale based on mesh size & resolution.
+			float heightPosX = generatePerlinNoise(vec2(x + delta, z));
+			float heightPosZ = generatePerlinNoise(vec2(x, z + delta));
+			float heightNegX = generatePerlinNoise(vec2(x - delta, z));
+			float heightNegZ = generatePerlinNoise(vec2(x, z - delta));
+			vec3 tangentX = normalize(vec3(x + delta, heightPosX, z) - vec3(x - delta, heightNegX, z));
+			vec3 tangentZ = normalize(vec3(x, heightPosZ, z + delta) - vec3(x, heightNegZ, z - delta));
+			vec3 norm = normalize(cross(tangentX, tangentZ));
+			
 			// Each increase in i is a whole loop of j over meshResolution.
 			int vertIndex = i * meshResolution + j;
 			vertices[vertIndex] = mesh_vertex(pos, norm, uv);
@@ -127,6 +136,7 @@ float PerlinNoise::generatePerlinNoise(vec2 pos) {
 	float frequency = 1.0f;
 	// Create perlin noise by combining noise octaves of doubling frequency and halving amplitude.
 	for (int oct = 0; oct < noiseOctaves; oct++) {
+		// TODO: Add (initially random) octave offsets onto pos so that each octave is sampled from a different noise area.
 		frequency *= pow(2.0f, oct);
 		noiseHeight += generateNoise(pos * frequency) * amplitude;
 		maxHeight += amplitude;
