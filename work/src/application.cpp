@@ -111,8 +111,9 @@ void Application::renderGUI() {
 
 	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 1.0f, "%.2f");
 	ImGui::SliderFloat("Amplitude", &m_model.noiseAmplitude, 0.1f, 10.0f, "%.2f");
-	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.2f");
-	ImGui::SliderFloat("Spread", &m_model.noiseSpread, 0.1f, 10.0f, "%.2f");
+	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
+	ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 10.0f, "%.2f");
+	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 50, 1000, "%.0f");
 
 	// finish creating window
 	ImGui::End();
