@@ -20,8 +20,9 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
-	gl_mesh plane = createMesh();
-	plane.draw();
+	// Recreate terrain then draw it.
+	terrain = createMesh();
+	terrain.draw();
 }
 
 gl_mesh PerlinNoise::createMesh() {
@@ -38,7 +39,7 @@ gl_mesh PerlinNoise::createMesh() {
 			float z = (-1.0f + 2.0f * v) * meshSize;
 
 			// Position, normal and uv of the vertex. Height is based on noise.
-			float height = generatePerlinNoise(vec2(x, z), noiseOctaves, noisePersistence, noiseAmplitude);
+			float height = generatePerlinNoise(vec2(x, z));
 			vec3 pos(x, height, z);
 			vec3 norm(0, 1.0f, 0); // TODO: Interpolate based on angle between neighbours.
 			vec2 uv(u, v);
@@ -119,19 +120,22 @@ float PerlinNoise::generateNoise(vec2 pos) {
 }
 
 
-float PerlinNoise::generatePerlinNoise(vec2 pos, int octaves, float persistence, float amplitude) {
+float PerlinNoise::generatePerlinNoise(vec2 pos) {
+	float noiseHeight = 0.0f;
+	float maxHeight = 0.0f;
+	float amplitude = 1.0f;
+	float frequency = 1.0f;
 	// Create perlin noise by combining noise octaves of doubling frequency and halving amplitude.
-	float overallNoise = 0.0f;
-	float height = 1.0f;
-	float totalHeight = 0;
-	for (int oct = 0; oct < octaves; oct++) {
-		float frequency = pow(2, oct);
-		overallNoise += generateNoise(pos * frequency) * height;
-		totalHeight += height;
-		height *= persistence;
+	for (int oct = 0; oct < noiseOctaves; oct++) {
+		frequency *= pow(2.0f, oct);
+		noiseHeight += generateNoise(pos * frequency) * amplitude;
+		maxHeight += amplitude;
+		// Each octave has lower amplitude and frequency by the persistence nad lacunarity scales.
+		amplitude *= noisePersistence;
+		frequency *= noiseLacunarity;
 	}
 	// Normalise then scale by amplitude.
-	float normalizedHeight = overallNoise / totalHeight;
-	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * amplitude; // Map back to positive range.
+	float normalizedHeight = noiseHeight / maxHeight;
+	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * noiseAmplitude; // Also map back to positive range.
 	return finalHeight;
 }
