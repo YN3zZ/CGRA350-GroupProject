@@ -34,7 +34,6 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 	mesh.draw(); // draw
 }
 
-perlin_noise noise;
 
 Application::Application(GLFWwindow *window) : m_window(window) {
 	
@@ -43,7 +42,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
 	GLuint shader = sb.build();
 
-	m_model = perlin_noise();
+	m_model = PerlinNoise();
 	m_model.shader = shader;
 	m_model.color = vec3(0.5f, 0.8f, 0.3f);
 }

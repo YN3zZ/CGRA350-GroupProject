@@ -49,7 +49,7 @@ private:
 	bool m_showWireframe = false;
 
 	// geometry
-	perlin_noise m_model;
+	PerlinNoise m_model;
 
 public:
 	// setup
