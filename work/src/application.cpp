@@ -89,7 +89,7 @@ void Application::renderGUI() {
 
 	// setup window
 	ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiSetCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiSetCond_Once);
 	ImGui::Begin("Options", 0);
 
 	// display current camera parameters
@@ -114,7 +114,7 @@ void Application::renderGUI() {
 	ImGui::SliderFloat("Height", &m_model.noiseAmplitude, 0.1f, 10.0f, "%.2f");
 	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
 	ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 10.0f, "%.2f");
-	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 50, 1000, "%.0f");
+	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 250, "%.0f");
 
 	// finish creating window
 	ImGui::End();
