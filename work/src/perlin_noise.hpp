@@ -16,7 +16,8 @@ public:
 	float noisePersistence = 0.8f;
 	float noiseAmplitude = 2.0f;
 	int noiseOctaves = 1;
-	float noiseSpread = 1.0f;
+	float meshSize = 1.0f;
+	int meshResolution = 100;
 
 	PerlinNoise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);

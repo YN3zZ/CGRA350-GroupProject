@@ -18,65 +18,47 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
+	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
-
-	// Visualise noise temporarily with spheres.
-	for (int i = 0; i < 100; i++) {
-		for (int j = 0; j < 100; j++) {
-			float x = i / noiseSpread;
-			float z = j / noiseSpread;
-			// Transform height of sphere by noise at position.
-			vec2 pos(x, z);
-			float height = generatePerlinNoise(pos, noiseOctaves, noisePersistence, noiseAmplitude);
-			mat4 transform = translate(mat4(1.0f), vec3(x, height, z)) *
-							scale(mat4(1.0f), vec3(0.1f));
-			glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * transform));
-			drawSphere();
-		}
-	}
-
-	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view));
 	gl_mesh plane = createMesh();
 	plane.draw();
 }
 
 gl_mesh PerlinNoise::createMesh() {
-	int dims = 4;
-	float size = 15.0f;
-
-	vector<mesh_vertex> vertices(dims * dims); // Vector instead of 2D array uses the heap instead of the stack.
+	vector<mesh_vertex> vertices(meshResolution * meshResolution); // Vector instead of 2D array uses the heap instead of the stack.
 	mesh_builder mb;
 
 	// Generate and store every vertex of the plane.
-	for (int i = 0; i < dims; ++i) {
-		for (int j = 0; j < dims; ++j) {
-			// Get u and v offset on mesh and map to range -size to size for x and z.
-			float u = i / (dims - 1);
-			float v = j / (dims - 1);
-			float x = (-1.0f + 2.0f * u) * size;
-			float z = (-1.0f + 2.0f * v) * size;
+	for (int i = 0; i < meshResolution; ++i) {
+		for (int j = 0; j < meshResolution; ++j) {
+			// Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
+			float u = i / (meshResolution - 1.0f);
+			float v = j / (meshResolution - 1.0f);
+			float x = (-1.0f + 2.0f * u) * meshSize;
+			float z = (-1.0f + 2.0f * v) * meshSize;
 
-			// Position, normal and uv of the vertex.
-			vec3 pos(x, -1.0f, z); // TODO: Replace -1 height with noise height.
+			// Position, normal and uv of the vertex. Height is based on noise.
+			float height = generatePerlinNoise(vec2(x, z), noiseOctaves, noisePersistence, noiseAmplitude);
+			vec3 pos(x, height, z);
 			vec3 norm(0, 1.0f, 0); // TODO: Interpolate based on angle between neighbours.
 			vec2 uv(u, v);
 
-			// Each increase in i is a whole loop of j over dims.
-			int vertIndex = i * dims + j;
+			// Each increase in i is a whole loop of j over meshResolution.
+			int vertIndex = i * meshResolution + j;
 			vertices[vertIndex] = mesh_vertex(pos, norm, uv);
 		}
 	}
 
-	// Create the triangles. Ignore the final vertex (dims - 1) as the quads/triangles are formed up to it.
+	// Create the triangles. Ignore the final vertex (meshResolution - 1) as the quads/triangles are formed up to it.
 	unsigned int index = 0;
-	for (int i = 0; i < dims - 1; ++i) {
-		for (int j = 0; j < dims - 1; ++j) {
+	for (int i = 0; i < meshResolution - 1; ++i) {
+		for (int j = 0; j < meshResolution - 1; ++j) {
 			// Get next index along.
 			int i2 = i + 1;
 			int j2 = j + 1;
 			// Offset i by the rows of j that have been passed already. This is to index the vector properly.
-			int iOffset = i * dims;
-			int iOffset2 = i2 * dims;
+			int iOffset = i * meshResolution;
+			int iOffset2 = i2 * meshResolution;
 
 			// Get vertices. 2D array alternative: vertices[i][j].
 			mesh_vertex topLeft = vertices[iOffset + j];
