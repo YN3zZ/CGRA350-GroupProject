@@ -91,22 +91,15 @@ gl_mesh PerlinNoise::createMesh() {
 }
 
 
-inline vec2 smoothstep(vec2 t) {
-	return t * t * (3.0f - 2.0f * t);
-}
-
-
-inline float random(vec2 v) {
+inline vec2 randGradient(vec2 v) {
 	// Create a hash then bitshift it with XOR to further randomise.
 	int n = int(v.x) + int(v.y) * 57;
 	n = (n << 13) ^ n;
 	// 2147483647 is max int, so bitwise AND is used with it to force a positive integer by dropping the (positive/negative) sign bit.
-	return float((n * (n * n * 255179 + 98712751) + 1576546427) & 2147483647) / 2147483647.0f; // Divided by max int to give [0, 1] range.
-}
+	float num = ((n * (n * n * 255179 + 98712751) + 1576546427) & 2147483647) / 2147483647.0f; // Divided by max int (as float) to give [0.0, 1.0] range.
 
-
-inline vec2 randGradient(vec2 v) {
-	float angle = random(v) * glm::two_pi<float>();
+	// Next convert the random number from [0.0, 1.0] into an angle from [0.0, 2PI] for a circular gradient.
+	float angle = num * glm::two_pi<float>();
 	return vec2(cos(angle), sin(angle));
 }
 
@@ -115,8 +108,8 @@ inline vec2 randGradient(vec2 v) {
 float PerlinNoise::generateNoise(vec2 pos) {
 	// Use fractional component of position to make it smoother closer to vertices.
 	vec2 gridPos = floor(pos);
-	vec2 posFrac = pos - gridPos + 1e-3f;
-	vec2 smooth = smoothstep(posFrac);
+	vec2 posFrac = pos - gridPos;
+	vec2 smooth = posFrac * posFrac * (3.0f - 2.0f * posFrac);
 
 	// Gradients of the four grid corners relative to this position.
 	float bl = dot(randGradient(gridPos), posFrac);
@@ -138,7 +131,7 @@ float PerlinNoise::generatePerlinNoise(vec2 pos) {
 	for (int oct = 0; oct < noiseOctaves; oct++) {
 		// TODO: Add (initially random) octave offsets onto pos so that each octave is sampled from a different noise area.
 		frequency *= pow(2.0f, oct);
-		noiseHeight += generateNoise(pos * frequency) * amplitude;
+		noiseHeight += generateNoise(pos * noiseScale * frequency) * amplitude;
 		maxHeight += amplitude;
 		// Each octave has lower amplitude and frequency by the persistence nad lacunarity scales.
 		amplitude *= noisePersistence;
@@ -146,6 +139,6 @@ float PerlinNoise::generatePerlinNoise(vec2 pos) {
 	}
 	// Normalise then scale by amplitude.
 	float normalizedHeight = noiseHeight / maxHeight;
-	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * noiseAmplitude; // Also map back to positive range.
+	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * meshHeight; // Also map back to positive range.
 	return finalHeight;
 }
