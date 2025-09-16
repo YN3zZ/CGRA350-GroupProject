@@ -44,7 +44,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
 	m_model = PerlinNoise();
 	m_model.shader = shader;
-	m_model.color = vec3(0.5f, 0.8f, 0.3f);
+	m_model.color = vec3(0.5f, 0.5f, 0.3f);
 }
 
 
@@ -109,10 +109,12 @@ void Application::renderGUI() {
 	
 	ImGui::Separator();
 
+	// Temporary UI control of noise to be replaced with the node-based UI.
 	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.1f, 1.0f, "%.2f");
 	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 0.1f, 2.0f, "%.2f");
-	ImGui::SliderFloat("Height", &m_model.noiseAmplitude, 0.1f, 10.0f, "%.2f");
+	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.1f, 2.0f, "%.2f");
 	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
+	ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 10.0f, "%.2f");
 	ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 10.0f, "%.2f");
 	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 250, "%.0f");
 
