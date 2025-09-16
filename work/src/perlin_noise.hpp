@@ -6,7 +6,7 @@
 // project
 #include "opengl.hpp"
 
-class perlin_noise {
+class PerlinNoise {
 private:
 
 public:
@@ -18,8 +18,9 @@ public:
 	int noiseOctaves = 1;
 	float noiseSpread = 1.0f;
 
-	perlin_noise() {}
+	PerlinNoise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	float generateNoise(glm::vec2 pos);
 	float generatePerlinNoise(glm::vec2 pos, int octaves, float persistence, float amplitude);
+	cgra::gl_mesh createMesh();
 };
