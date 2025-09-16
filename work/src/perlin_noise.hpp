@@ -13,8 +13,8 @@ public:
 	GLuint shader = 0;
 	glm::vec3 color{ 0.7f };
 	glm::mat4 modelTransform{ 1.0f };
-	float noisePersistence = 0.8f;
-	float noiseLacunarity = 0.8f;
+	float noisePersistence = 0.4f;
+	float noiseLacunarity = 0.5f;
 	float noiseAmplitude = 2.0f;
 	int noiseOctaves = 1;
 	float meshSize = 1.0f;
