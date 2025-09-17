@@ -31,32 +31,32 @@ gl_mesh PerlinNoise::createMesh() {
 
 	// Generate and store every vertex of the plane.
 	for (int i = 0; i < meshResolution; ++i) {
-		for (int j = 0; j < meshResolution; ++j) {
-			// Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
-			float u = i / (meshResolution - 1.0f);
-			float v = j / (meshResolution - 1.0f);
-			float x = (-1.0f + 2.0f * u) * meshSize;
-			float z = (-1.0f + 2.0f * v) * meshSize;
-
-			// Position, normal and uv of the vertex. Height is based on noise.
-			float height = generatePerlinNoise(vec2(x, z));
-			vec3 pos(x, height, z);
-			vec2 uv(u, v);
-
-			// Interpolate normal from slope angle between close neighbours in x and z directions.
-			float delta = 0.05f; // TODO: make delta scale based on mesh size & resolution.
-			float heightPosX = generatePerlinNoise(vec2(x + delta, z));
-			float heightPosZ = generatePerlinNoise(vec2(x, z + delta));
-			float heightNegX = generatePerlinNoise(vec2(x - delta, z));
-			float heightNegZ = generatePerlinNoise(vec2(x, z - delta));
-			vec3 tangentX = normalize(vec3(x + delta, heightPosX, z) - vec3(x - delta, heightNegX, z));
-			vec3 tangentZ = normalize(vec3(x, heightPosZ, z + delta) - vec3(x, heightNegZ, z - delta));
-			vec3 norm = normalize(cross(tangentX, tangentZ));
-			
-			// Each increase in i is a whole loop of j over meshResolution.
-			int vertIndex = i * meshResolution + j;
-			vertices[vertIndex] = mesh_vertex(pos, norm, uv);
-		}
+        for (int j = 0; j < meshResolution; ++j) {
+            // Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
+            float u = i / (meshResolution - 1.0f);
+            float v = j / (meshResolution - 1.0f);
+            float x = (-1.0f + 2.0f * u) * meshSize;
+            float z = (-1.0f + 2.0f * v) * meshSize;
+            
+            // Position, normal and uv of the vertex. Height is based on noise.
+            float height = generatePerlinNoise(vec2(x, z));
+            vec3 pos(x, height, z);
+            vec2 uv(u, v);
+            
+            // Interpolate normal from slope angle between close neighbours in x and z directions.
+            float delta = 0.05f; // TODO: make delta scale based on mesh size & resolution.
+            float heightPosX = generatePerlinNoise(vec2(x + delta, z));
+            float heightPosZ = generatePerlinNoise(vec2(x, z + delta));
+            float heightNegX = generatePerlinNoise(vec2(x - delta, z));
+            float heightNegZ = generatePerlinNoise(vec2(x, z - delta));
+            vec3 tangentX = normalize(vec3(x + delta, heightPosX, z) - vec3(x - delta, heightNegX, z));
+            vec3 tangentZ = normalize(vec3(x, heightPosZ, z + delta) - vec3(x, heightNegZ, z - delta));
+            vec3 norm = normalize(cross(tangentX, tangentZ));
+            
+            // Each increase in i is a whole loop of j over meshResolution.
+            int vertIndex = i * meshResolution + j;
+            vertices[vertIndex] = mesh_vertex{pos, norm, uv};
+        }
 	}
 
 	// Create the triangles. Ignore the final vertex (meshResolution - 1) as the quads/triangles are formed up to it.
@@ -118,7 +118,7 @@ float PerlinNoise::generateNoise(vec2 pos) {
 	float tr = dot(randGradient(gridPos + vec2(1, 1)), posFrac - vec2(1, 1));
 
 	// Bilinear interpolation using smooth/fade.
-	return lerp(lerp(bl, br, smooth.x), lerp(tl, tr, smooth.x), smooth.y);
+    return mix(mix(bl, br, smooth.x), mix(tl, tr, smooth.x), smooth.y);
 }
 
 
