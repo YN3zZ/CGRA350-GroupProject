@@ -17,6 +17,7 @@ using namespace cgra;
 // Generate the terrain mesh when UI parameters are changed instead of every frame.
 void PerlinNoise::generate() {
 	terrain = createMesh();
+	// TODO: Linking to children nodes such as for tree drawing.
 }
 
 
@@ -63,7 +64,7 @@ gl_mesh PerlinNoise::createMesh() {
 	}
 
 	// Create the vertices which have positions, normals and UVs.
-	vector<mesh_vertex> vertices(meshResolution * meshResolution);
+	vertices = vector<mesh_vertex>(meshResolution * meshResolution);
 	for (int i = 0; i < meshResolution; ++i) {
 		for (int j = 0; j < meshResolution; ++j) {
 			// Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
