@@ -25,38 +25,50 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	terrain.draw();
 }
 
+
 gl_mesh PerlinNoise::createMesh() {
 	vector<mesh_vertex> vertices(meshResolution * meshResolution); // Vector instead of 2D array uses the heap instead of the stack.
 	mesh_builder mb;
 
-	// Generate and store every vertex of the plane.
+	// 1 vertex on either side of padding for normals to be smooth around the edge of the terrain.
+	int padResolution = meshResolution + 2;
+	vector<vec3> vertexPositions(padResolution * padResolution);
+	for (int i = 0; i < padResolution; ++i) {
+		for (int j = 0; j < padResolution; ++j) {
+			// Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
+			float u = i / (padResolution - 1.0f);
+			float v = j / (padResolution - 1.0f);
+			// Rescale the mesh to the original size after padding.
+			float rescaling = (padResolution - 1.0f) / (meshResolution - 1.0f);
+			float x = (-1.0f + 2.0f * u) * meshSize * rescaling;
+			float z = (-1.0f + 2.0f * v) * meshSize * rescaling;
+
+			// Position, normal and uv of the vertex. Height is based on noise.
+			float height = generatePerlinNoise(vec2(x, z));
+			int vertIndex = i * padResolution + j;
+			vertexPositions[vertIndex] = vec3(x, height, z);;
+		}
+	}
+
 	for (int i = 0; i < meshResolution; ++i) {
-        for (int j = 0; j < meshResolution; ++j) {
-            // Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
-            float u = i / (meshResolution - 1.0f);
-            float v = j / (meshResolution - 1.0f);
-            float x = (-1.0f + 2.0f * u) * meshSize;
-            float z = (-1.0f + 2.0f * v) * meshSize;
-            
-            // Position, normal and uv of the vertex. Height is based on noise.
-            float height = generatePerlinNoise(vec2(x, z));
-            vec3 pos(x, height, z);
-            vec2 uv(u, v);
-            
-            // Interpolate normal from slope angle between close neighbours in x and z directions.
-            float delta = 1 / (meshResolution - 1.0f) * meshSize; // Distance between neighbouring vertices.
-            float heightPosX = generatePerlinNoise(vec2(x + delta, z));
-            float heightPosZ = generatePerlinNoise(vec2(x, z + delta));
-            float heightNegX = generatePerlinNoise(vec2(x - delta, z));
-            float heightNegZ = generatePerlinNoise(vec2(x, z - delta));
-            vec3 tangentX = normalize(vec3(x + delta, heightPosX, z) - vec3(x - delta, heightNegX, z));
-            vec3 tangentZ = normalize(vec3(x, heightPosZ, z + delta) - vec3(x, heightNegZ, z - delta));
-            vec3 norm = normalize(cross(tangentX, tangentZ));
-            
-            // Each increase in i is a whole loop of j over meshResolution.
-            int vertIndex = i * meshResolution + j;
-            vertices[vertIndex] = mesh_vertex{pos, norm, uv};
-        }
+		for (int j = 0; j < meshResolution; ++j) {
+			// Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
+			float u = i / (meshResolution - 1.0f);
+			float v = j / (meshResolution - 1.0f);
+
+			// Each increase in i is a whole loop of j over meshResolution.
+			int vertIndex = i * meshResolution + j;
+			int padIndex = (i + 1) * padResolution + (j + 1); // Padding so normals don't go off edge of terrain.
+			vec3 pos = vertexPositions[padIndex];
+			vec2 uv(u, v);
+
+			// Interpolate normal from slope angle between vertex neighbours in x and z directions.
+			vec3 tangentX = normalize(vertexPositions[padIndex + 1] - vertexPositions[padIndex - 1]);
+			vec3 tangentZ = normalize(vertexPositions[padIndex + padResolution] - vertexPositions[padIndex - padResolution]);
+			vec3 norm = normalize(cross(tangentX, tangentZ));
+
+			vertices[vertIndex] = mesh_vertex{ pos, norm, uv };
+		}
 	}
 
 	// Create the triangles. Ignore the final vertex (meshResolution - 1) as the quads/triangles are formed up to it.
@@ -129,7 +141,7 @@ float PerlinNoise::generatePerlinNoise(vec2 pos) {
 	float frequency = 1.0f;
 	// Create perlin noise by combining noise octaves of doubling frequency and halving amplitude.
 	for (int oct = 0; oct < noiseOctaves; oct++) {
-		// TODO: Add (initially random) octave offsets onto pos so that each octave is sampled from a different noise area.
+		// TODO: Add (seeded random) octave offsets onto pos so that each octave is sampled from a different noise area.
 		frequency *= pow(2.0f, oct);
 		noiseHeight += generateNoise(pos * noiseScale * frequency) * amplitude;
 		maxHeight += amplitude;
