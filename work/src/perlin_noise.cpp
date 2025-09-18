@@ -21,12 +21,31 @@ void PerlinNoise::generate() {
 }
 
 
+// Get the min and max height of the terrain for texturing.
+vec2 PerlinNoise::getHeightRange() {
+	// Min and max height initially are the height of the first vertex.
+	vec2 heightRange(vertices[0].pos.y);
+	for (int i = 1; i < vertices.size(); i++) {
+		float vertHeight = vertices[i].pos.y;
+		// Adjust the min/max if any vertex is lower/higher.
+		if (heightRange.x > vertHeight) {
+			heightRange.x = vertHeight;
+		}
+		if (heightRange.y < vertHeight) {
+			heightRange.y = vertHeight;
+		}
+	}
+	return heightRange;
+}
+
+
 void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
+	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
 	// Draw the terrain.
 	terrain.draw();
 }

@@ -11,6 +11,7 @@ private:
 	float generateNoise(glm::vec2 pos);
 	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
 	cgra::gl_mesh createMesh();
+	glm::vec2 getHeightRange();
 
 public:
 	GLuint shader = 0;
@@ -26,7 +27,7 @@ public:
 	int meshResolution = 100; // Square this to get total vertices.
 	cgra::gl_mesh terrain;
 	// Vertices vector exposed for other objects such as trees to generate on them.
-	std::vector<cgra::mesh_vertex> vertices;
+	std::vector<cgra::mesh_vertex> vertices; // May make this private and expose it through getters or as a parameter.
 
 	// Initially generate the mesh then regenerate it when UI parameters changed.
 	PerlinNoise() { generate(); }
