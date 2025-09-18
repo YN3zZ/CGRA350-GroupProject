@@ -9,7 +9,7 @@
 class PerlinNoise {
 private:
 	float generateNoise(glm::vec2 pos);
-	float generatePerlinNoise(glm::vec2 pos);
+	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
 	cgra::gl_mesh createMesh();
 
 public:
@@ -18,7 +18,7 @@ public:
 	glm::mat4 modelTransform{ 1.0f };
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
 	float noisePersistence = 0.3f; // Height loss between octaves.
-	float noiseLacunarity = 0.7f; // Frequency loss between octaves.
+	float noiseLacunarity = 2.0f; // Frequency increase between octaves.
 	float noiseScale = 0.5f; // Spread of noise.
 	int noiseOctaves = 4; // Higher octaves add finer details.
 	float meshHeight = 2.5f; // Overall height.
