@@ -15,6 +15,7 @@
 #include "cgra/cgra_image.hpp"
 #include "cgra/cgra_shader.hpp"
 #include "cgra/cgra_wavefront.hpp"
+#include "perlin_noise.hpp"
 
 
 using namespace std;
@@ -41,9 +42,9 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
 	GLuint shader = sb.build();
 
+	m_model = PerlinNoise();
 	m_model.shader = shader;
-	// m_model.mesh = load_wavefront_data(CGRA_SRCDIR + std::string("/res//assets//teapot.obj")).build();
-	m_model.color = vec3(1, 0, 0);
+	m_model.color = vec3(0.5f, 0.5f, 0.3f);
 }
 
 
@@ -65,7 +66,7 @@ void Application::render() {
 	glDepthFunc(GL_LESS);
 
 	// projection matrix
-	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 1000.f);
+	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 2500.f);
 
 	// view matrix
 	mat4 view = translate(mat4(1), vec3(0, 0, -m_distance))
@@ -88,14 +89,14 @@ void Application::renderGUI() {
 
 	// setup window
 	ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiSetCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiSetCond_Once);
 	ImGui::Begin("Options", 0);
 
 	// display current camera parameters
 	ImGui::Text("Application %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
 	ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
-	ImGui::SliderFloat("Distance", &m_distance, 0, 100, "%.2f", 2.0f);
+	ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
 
 	// helpful drawing options
 	ImGui::Checkbox("Show axis", &m_show_axis);
@@ -108,11 +109,16 @@ void Application::renderGUI() {
 	
 	ImGui::Separator();
 
-	// example of how to use input boxes
-	static float exampleInput;
-	if (ImGui::InputFloat("example input", &exampleInput)) {
-		cout << "example input changed to " << exampleInput << endl;
-	}
+	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
+	if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) m_model.generate();
+	if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f)) m_model.generate();
+	if (ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f)) m_model.generate();
+	if (ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f)) m_model.generate();
+	if (ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f")) m_model.generate();
+	ImGui::Separator();
+	if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) m_model.generate();
+	if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) m_model.generate();
+	if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) m_model.generate();
 
 	// finish creating window
 	ImGui::End();
