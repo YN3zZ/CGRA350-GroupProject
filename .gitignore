@@ -31,6 +31,9 @@ Makefile
 Thumbs.db
 *.swp
 *~
+AppleInfo.plist
+*.plist
+
 
 # Compiled files
 *.o
