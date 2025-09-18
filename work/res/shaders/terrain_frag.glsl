@@ -27,7 +27,10 @@ void main() {
 	float maxHeight = heightRange.y;
 	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalPos.y);
 
-	vec3 stoneColor = mix(vec3(0.64f, 0.63f, 0.65f), vec3(0.24f, 0.23f, 0.25f), 1 - heightProportion);
+	// Temporarily hardcoded.
+	vec3 color1 = vec3(0.58f, 0.43f, 0.55f);
+	vec3 color2 = vec3(0.64f, 0.63f, 0.57f);
+	vec3 stoneColor = mix(color1, color2, clamp(heightProportion - 0.3f, 0.0f, 1.0f));
 
 	// output to the frambuffer
 	fb_color = vec4(mix(color, stoneColor, heightProportion), 1);
