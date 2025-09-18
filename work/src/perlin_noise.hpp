@@ -26,6 +26,8 @@ public:
 	int meshResolution = 100; // Square this to get total vertices.
 	cgra::gl_mesh terrain;
 
-	PerlinNoise() {}
+	// Initially generate the mesh then regenerate it when UI parameters changed.
+	PerlinNoise() { generate(); }
 	void draw(const glm::mat4& view, const glm::mat4& proj);
+	void generate();
 };
