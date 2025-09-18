@@ -27,9 +27,7 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 
 
 gl_mesh PerlinNoise::createMesh() {
-	vector<mesh_vertex> vertices(meshResolution * meshResolution); // Vector instead of 2D array uses the heap instead of the stack.
-	mesh_builder mb;
-
+	// Calculate the vertex positions using perlin noise.
 	// 1 vertex on either side of padding for normals to be smooth around the edge of the terrain.
 	int padResolution = meshResolution + 2;
 	vector<vec3> vertexPositions(padResolution * padResolution);
@@ -50,6 +48,8 @@ gl_mesh PerlinNoise::createMesh() {
 		}
 	}
 
+	// Create the vertices which have positions, normals and UVs.
+	vector<mesh_vertex> vertices(meshResolution * meshResolution);
 	for (int i = 0; i < meshResolution; ++i) {
 		for (int j = 0; j < meshResolution; ++j) {
 			// Get u and v offset on mesh and map to range -noiseSize to noiseSize for x and z.
@@ -70,26 +70,22 @@ gl_mesh PerlinNoise::createMesh() {
 			vertices[vertIndex] = mesh_vertex{ pos, norm, uv };
 		}
 	}
-
+	
 	// Create the triangles. Ignore the final vertex (meshResolution - 1) as the quads/triangles are formed up to it.
+	mesh_builder mb;
 	unsigned int index = 0;
 	for (int i = 0; i < meshResolution - 1; ++i) {
 		for (int j = 0; j < meshResolution - 1; ++j) {
-			// Get next index along.
-			int i2 = i + 1;
-			int j2 = j + 1;
 			// Offset i by the rows of j that have been passed already. This is to index the vector properly.
 			int iOffset = i * meshResolution;
-			int iOffset2 = i2 * meshResolution;
 
-			// Get vertices. 2D array alternative: vertices[i][j].
+			// Get vertices. 2D array alternative: vertices[i][j] to vertices[i+1][j+1].
 			mesh_vertex topLeft = vertices[iOffset + j];
-			mesh_vertex bottomLeft = vertices[iOffset + j2];
-			mesh_vertex topRight = vertices[iOffset2 + j];
-			mesh_vertex bottomRight = vertices[iOffset2 + j2];
+			mesh_vertex bottomLeft = vertices[iOffset + (j + 1)];
+			mesh_vertex topRight = vertices[(iOffset + meshResolution) + j];
+			mesh_vertex bottomRight = vertices[(iOffset + meshResolution) + (j + 1)];
 			// Add the two sets of three vertices for the left triangle and right triangle.
-			mesh_vertex triangleVertices[] = { topLeft, topRight, bottomLeft, bottomLeft, topRight, bottomRight };
-			for (mesh_vertex v : triangleVertices) {
+			for (mesh_vertex v : { topLeft, topRight, bottomLeft, bottomLeft, topRight, bottomRight }) {
 				mb.push_vertex(v);
 			}
 

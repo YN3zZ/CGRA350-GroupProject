@@ -16,6 +16,7 @@ public:
 	GLuint shader = 0;
 	glm::vec3 color{ 0.7f };
 	glm::mat4 modelTransform{ 1.0f };
+	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
 	float noisePersistence = 0.3f; // Height loss between octaves.
 	float noiseLacunarity = 0.7f; // Frequency loss between octaves.
 	float noiseScale = 0.5f; // Spread of noise.
