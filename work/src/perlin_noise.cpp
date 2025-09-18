@@ -14,14 +14,19 @@ using namespace glm;
 using namespace cgra;
 
 
+// Generate the terrain mesh when UI parameters are changed instead of every frame.
+void PerlinNoise::generate() {
+	terrain = createMesh();
+}
+
+
 void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
-	// Recreate terrain then draw it.
-	terrain = createMesh();
+	// Draw the terrain.
 	terrain.draw();
 }
 

@@ -109,16 +109,16 @@ void Application::renderGUI() {
 	
 	ImGui::Separator();
 
-	// Temporary UI control of noise to be replaced with the node-based UI.
-	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f");
-	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.1f, 0.5f, "%.2f");
-	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f");
-	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.1f, 2.0f, "%.2f");
-	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
+	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
+	if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) m_model.generate();
+	if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.1f, 0.5f, "%.2f")) m_model.generate();
+	if (ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f")) m_model.generate();
+	if (ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f")) m_model.generate();
+	if (ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f")) m_model.generate();
 	ImGui::Separator();
-	ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 10.0f, "%.2f");
-	ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 10.0f, "%.2f");
-	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 250, "%.0f");
+	if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 50.0f, "%.1f")) m_model.generate();
+	if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f")) m_model.generate();
+	if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) m_model.generate();
 
 	// finish creating window
 	ImGui::End();
