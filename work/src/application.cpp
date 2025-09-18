@@ -110,9 +110,9 @@ void Application::renderGUI() {
 	ImGui::Separator();
 
 	// Temporary UI control of noise to be replaced with the node-based UI.
-	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 1000, "%.0f");
-	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.1f, 1.0f, "%.2f");
-	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 0.1f, 2.0f, "%.2f");
+	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f");
+	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.1f, 0.5f, "%.2f");
+	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f");
 	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.1f, 2.0f, "%.2f");
 	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
 	ImGui::Separator();

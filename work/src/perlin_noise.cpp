@@ -27,6 +27,15 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 
 
 gl_mesh PerlinNoise::createMesh() {
+	// Randomiser based on the user-controlled seed.
+	mt19937 randomiser(noiseSeed);
+	uniform_int_distribution<int> distribution(0, 10000); // Min to max.
+	// Generates 2 random floats to make a vec2 to offset each octave, eliminating repeated patterns.
+	vector<vec2> octaveOffsets(noiseOctaves);
+	for (int oct = 0; oct < noiseOctaves; oct++) {
+		octaveOffsets[oct] = vec2(distribution(randomiser), distribution(randomiser));
+	}
+
 	// Calculate the vertex positions using perlin noise.
 	// 1 vertex on either side of padding for normals to be smooth around the edge of the terrain.
 	int padResolution = meshResolution + 2;
@@ -42,7 +51,7 @@ gl_mesh PerlinNoise::createMesh() {
 			float z = (-1.0f + 2.0f * v) * meshSize * rescaling;
 
 			// Position, normal and uv of the vertex. Height is based on noise.
-			float height = generatePerlinNoise(vec2(x, z));
+			float height = generatePerlinNoise(vec2(x, z), octaveOffsets);
 			int vertIndex = i * padResolution + j;
 			vertexPositions[vertIndex] = vec3(x, height, z);;
 		}
@@ -130,18 +139,17 @@ float PerlinNoise::generateNoise(vec2 pos) {
 }
 
 
-float PerlinNoise::generatePerlinNoise(vec2 pos) {
+float PerlinNoise::generatePerlinNoise(vec2 pos, const vector<vec2> &octaveOffsets) {
 	float noiseHeight = 0.0f;
 	float maxHeight = 0.0f;
 	float amplitude = 1.0f;
 	float frequency = 1.0f;
 	// Create perlin noise by combining noise octaves of doubling frequency and halving amplitude.
 	for (int oct = 0; oct < noiseOctaves; oct++) {
-		// TODO: Add (seeded random) octave offsets onto pos so that each octave is sampled from a different noise area.
-		frequency *= pow(2.0f, oct);
-		noiseHeight += generateNoise(pos * noiseScale * frequency) * amplitude;
+		// Uses seeded octave offsets, noise scale and diminishing frequency and amplitude per octave.
+		noiseHeight += generateNoise((pos + octaveOffsets[oct]) * noiseScale * frequency) * amplitude;
 		maxHeight += amplitude;
-		// Each octave has lower amplitude and frequency by the persistence nad lacunarity scales.
+		// Each octave has lower amplitude and higher frequency by the persistence and lacunarity scales.
 		amplitude *= noisePersistence;
 		frequency *= noiseLacunarity;
 	}
