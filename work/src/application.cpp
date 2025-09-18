@@ -38,8 +38,8 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 Application::Application(GLFWwindow *window) : m_window(window) {
 	
 	shader_builder sb;
-    sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert.glsl"));
-	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
+    sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
+	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
 	GLuint shader = sb.build();
 
 	m_model = PerlinNoise();
@@ -66,7 +66,7 @@ void Application::render() {
 	glDepthFunc(GL_LESS);
 
 	// projection matrix
-	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 2500.f);
+	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 	// view matrix
 	mat4 view = translate(mat4(1), vec3(0, 0, -m_distance))
