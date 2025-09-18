@@ -44,7 +44,7 @@ gl_mesh PerlinNoise::createMesh() {
             vec2 uv(u, v);
             
             // Interpolate normal from slope angle between close neighbours in x and z directions.
-            float delta = 0.05f; // TODO: make delta scale based on mesh size & resolution.
+            float delta = 1 / (meshResolution - 1.0f) * meshSize; // Distance between neighbouring vertices.
             float heightPosX = generatePerlinNoise(vec2(x + delta, z));
             float heightPosZ = generatePerlinNoise(vec2(x, z + delta));
             float heightNegX = generatePerlinNoise(vec2(x - delta, z));
@@ -93,7 +93,7 @@ gl_mesh PerlinNoise::createMesh() {
 
 inline vec2 randGradient(vec2 v) {
 	// Create a hash then bitshift it with XOR to further randomise.
-	int n = int(v.x) + int(v.y) * 57;
+	int n = int(v.x) * 17 + int(v.y) * 57;
 	n = (n << 13) ^ n;
 	// 2147483647 is max int, so bitwise AND is used with it to force a positive integer by dropping the (positive/negative) sign bit.
 	float num = ((n * (n * n * 255179 + 98712751) + 1576546427) & 2147483647) / 2147483647.0f; // Divided by max int (as float) to give [0.0, 1.0] range.
