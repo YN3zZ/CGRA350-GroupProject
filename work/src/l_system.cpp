@@ -102,3 +102,47 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
     
     return mb.build();
 }
+
+// Add helper function to create a cylinder between two points
+void addCylinder(mesh_builder& mb, vec3 start, vec3 end, float radius, 
+                 unsigned int& vertexIndex) {
+    vec3 direction = normalize(end - start);
+    float segmentLength = distance(start, end);
+
+    // Create a simple 6-sided cylinder
+    int sides = 6;
+    for (int i = 0; i < sides; i++) {
+        float angle1 = (2.0f * pi<float>() * i) / sides;
+        float angle2 = (2.0f * pi<float>() * (i + 1)) / sides;
+        
+        // Calculate vertex positions
+        vec3 right = normalize(cross(direction, vec3(1, 0, 0)));
+        if (length(right) < 0.001f) {
+            right = normalize(cross(direction, vec3(0, 0, 1)));
+        }
+        vec3 up = normalize(cross(direction, right));
+        
+        // Bottom vertices
+        vec3 v1 = start + radius * (cos(angle1) * right + sin(angle1) * up);
+        vec3 v2 = start + radius * (cos(angle2) * right + sin(angle2) * up);
+        
+        // Top vertices
+        vec3 v3 = end + radius * (cos(angle1) * right + sin(angle1) * up);
+        vec3 v4 = end + radius * (cos(angle2) * right + sin(angle2) * up);
+        
+        // Create triangles for cylinder side
+        mesh_vertex mv1{v1, normalize(v1 - start), vec2(0, 0)};
+        mesh_vertex mv2{v2, normalize(v2 - start), vec2(1, 0)};
+        mesh_vertex mv3{v3, normalize(v3 - end), vec2(0, 1)};
+        mesh_vertex mv4{v4, normalize(v4 - end), vec2(1, 1)};
+        
+        mb.push_vertex(mv1);
+        mb.push_vertex(mv2);
+        mb.push_vertex(mv3);
+        mb.push_vertex(mv4);
+        
+        mb.push_indices({vertexIndex, vertexIndex + 1, vertexIndex + 2});
+        mb.push_indices({vertexIndex + 1, vertexIndex + 3, vertexIndex + 2});
+        vertexIndex += 4;
+    }
+}

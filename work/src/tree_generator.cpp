@@ -13,8 +13,8 @@ vec3 TreeGenerator::sampleTerrainHeight(const vector<mesh_vertex>& vertices,
     float u = (position.x / size + 1.0f) * 0.5f;
     float v = (position.y / size + 1.0f) * 0.5f;
     
-    int i = clamp(int(u * (resolution - 1)), 0, resolution - 1);
-    int j = clamp(int(v * (resolution - 1)), 0, resolution - 1);
+    int i = std::clamp(int(u * (resolution - 1)), 0, resolution - 1);
+    int j = std::clamp(int(v * (resolution - 1)), 0, resolution - 1);
     
     int index = i * resolution + j;
     return vertices[index].pos;
