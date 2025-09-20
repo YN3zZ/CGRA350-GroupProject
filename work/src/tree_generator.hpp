@@ -15,10 +15,12 @@ public:
     
     // Tree placement parameters
     int treeCount = 50;
-    float minHeight = 0.5f; // Minimum terrain height for tree placement
-    float maxSlope = 0.8f; // Maximum slope for tree placement
     float minTreeScale = 0.5f;
     float maxTreeScale = 1.5f;
+	float branchTaper = 0.8f; // How much branches taper
+    int cylinderSides = 6; // Cylinder complexity
+    bool randomRotation = true; // Random Y rotation for variety
+    float windBend = 0.0f;
     
     // Generated trees
     std::vector<cgra::gl_mesh> trees;

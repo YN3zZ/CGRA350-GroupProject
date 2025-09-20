@@ -24,6 +24,9 @@ void TreeGenerator::generateTreesOnTerrain(const vector<mesh_vertex>& terrainVer
                                            int meshResolution, float meshSize) {
     trees.clear();
     treeTransforms.clear();
+
+    lSystem.cylinderSides = cylinderSides;
+    lSystem.branchTaper = branchTaper;
     
     // Generate the tree mesh once
     string lSystemString = lSystem.generateString();
@@ -32,23 +35,23 @@ void TreeGenerator::generateTreesOnTerrain(const vector<mesh_vertex>& terrainVer
     // Random placement
     mt19937 rng(42);  // Fixed seed for reproducibility
     uniform_real_distribution<float> positionDist(-meshSize * 0.8f, meshSize * 0.8f);
+    uniform_real_distribution<float> scaleDist(minTreeScale, maxTreeScale);
+    uniform_real_distribution<float> rotationDist(0.0f, 2.0f * pi<float>());
     
     for (int i = 0; i < treeCount; i++) {
         vec2 position(positionDist(rng), positionDist(rng));
-        vec3 terrainPoint = sampleTerrainHeight(terrainVertices, meshResolution, 
+        vec3 terrainPoint = sampleTerrainHeight(terrainVertices, meshResolution,
                                                 meshSize, position);
         
-        // Check if this is a valid position for a tree
-        if (terrainPoint.y > minHeight) {
-            trees.push_back(treeMesh);
-            
-            // Create transform matrix for this tree
-            uniform_real_distribution<float> scaleDist(minTreeScale, maxTreeScale);
-            float scale = scaleDist(rng);
-            mat4 transform = translate(mat4(1.0f), terrainPoint) * 
-                            glm::scale(mat4(1.0f), vec3(scale));
-            treeTransforms.push_back(transform);
-        }
+        trees.push_back(treeMesh);
+        
+        float scale = scaleDist(rng);
+        float rotation = randomRotation ? rotationDist(rng) : 0.0f;
+        
+        mat4 transform = translate(mat4(1.0f), terrainPoint) *
+                        rotate(mat4(1.0f), rotation, vec3(0, 1, 0)) *
+                        glm::scale(mat4(1.0f), vec3(scale));
+        treeTransforms.push_back(transform);
     }
 }
 

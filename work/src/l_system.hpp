@@ -21,6 +21,8 @@ public:
     int iterations = 3;
     float angle = 25.0f; // degrees
     float stepLength = 1.0f;
+    float branchTaper = 0.98f;
+    int cylinderSides = 8;
     
     // Generate the L-System string
     std::string generateString();
@@ -40,5 +42,5 @@ private:
     };
 
     // Helper function to add cylinder mesh
-    void addCylinder(cgra::mesh_builder& mb, glm::vec3 start, glm::vec3 end, float radius, unsigned int& vertexIndex);
+    void addCylinder(cgra::mesh_builder& mb, glm::vec3 start, glm::vec3 end, float startRadius, float endRadius, unsigned int& vertexIndex);
 };
