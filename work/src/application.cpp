@@ -185,6 +185,16 @@ void Application::renderGUI() {
         m_trees.setTreeType(m_treeType);
         m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
+
+    if (ImGui::SliderFloat("Min Height", &m_trees.minHeight, 0.0f, 5.0f)) {
+    m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+    if (ImGui::SliderFloat("Max Slope", &m_trees.maxSlope, 0.0f, 1.0f)) {
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+    if (ImGui::SliderFloat("Step Length", &m_trees.lSystem.stepLength, 0.1f, 2.0f)) {
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
     
     // finish creating window
     ImGui::End();
