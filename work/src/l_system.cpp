@@ -16,17 +16,20 @@ string LSystem::generateString() {
     string current = axiom;
     
     for (int i = 0; i < iterations; i++) {
-        string next = "";
+        size_t estimatedSize = current.length() * 3;
+        string next;
+        next.reserve(estimatedSize);
+        
         for (char c : current) {
-            if (rules.find(c) != rules.end()) {
-                next += rules[c];
+            auto it = rules.find(c);
+            if (it != rules.end()) {
+                next.append(it->second);
             } else {
-                next += c;
+                next.push_back(c);
             }
         }
-        current = next;
+        current = std::move(next);
     }
-    
     return current;
 }
 
@@ -55,7 +58,6 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
                 vec3 startPos = turtle.position;
                 vec3 endPos = turtle.position + turtle.direction * stepLength;
                 
-                // If this is the first segment after branching, add a collar
                 if (nextIsNewBranch) {
                     // Add a small tapered section as transition
                     vec3 collarEnd = startPos + turtle.direction * (stepLength * 0.15f);
