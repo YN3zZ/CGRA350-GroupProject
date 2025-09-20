@@ -36,15 +36,18 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 
 
 Application::Application(GLFWwindow *window) : m_window(window) {
-	
-	shader_builder sb;
+    shader_builder sb;
     sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert.glsl"));
-	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
-	GLuint shader = sb.build();
+    sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
+    GLuint shader = sb.build();
 
-	m_model = PerlinNoise();
-	m_model.shader = shader;
-	m_model.color = vec3(0.5f, 0.5f, 0.3f);
+    m_model = PerlinNoise();
+    m_model.shader = shader;
+    m_model.color = vec3(0.5f, 0.5f, 0.3f);
+    
+    // Initialize trees
+    m_trees.shader = shader;
+    m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
 }
 
 
@@ -82,6 +85,8 @@ void Application::render() {
 
 	// draw the model
 	m_model.draw(view, proj);
+	// draw trees
+	m_trees.draw(view, proj);
 }
 
 
@@ -119,7 +124,17 @@ void Application::renderGUI() {
 	if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) m_model.generate();
 	if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) m_model.generate();
 	if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) m_model.generate();
-
+	ImGui::Separator();
+	ImGui::Text("L-System Trees");
+	if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
+		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+	}
+	if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f)) {
+		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+	}
+	if (ImGui::SliderInt("Iterations", &m_trees.lSystem.iterations, 1, 5)) {
+		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+	}
 	// finish creating window
 	ImGui::End();
 }
