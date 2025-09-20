@@ -100,7 +100,6 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
 void LSystem::addCylinder(mesh_builder& mb, vec3 start, vec3 end, float radius, 
                  unsigned int& vertexIndex) {
     vec3 direction = normalize(end - start);
-    float segmentLength = distance(start, end);
 
     // Create a simple 6-sided cylinder
     int sides = 6;
