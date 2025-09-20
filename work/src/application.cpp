@@ -115,8 +115,10 @@ void Application::renderGUI() {
 	ImGui::Separator();
 
 	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
-	if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) m_model.generate();
-	if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f)) m_model.generate();
+	if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) {
+		m_model.generate();
+		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+	}	if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f)) m_model.generate();
 	if (ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f)) m_model.generate();
 	if (ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f)) m_model.generate();
 	if (ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f")) m_model.generate();
@@ -133,6 +135,12 @@ void Application::renderGUI() {
 		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
 	}
 	if (ImGui::SliderInt("Iterations", &m_trees.lSystem.iterations, 1, 5)) {
+		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+	}
+
+	const char* treeTypes[] = {"Simple", "Bushy", "Willow"};
+	if (ImGui::Combo("Tree Type", &m_treeType, treeTypes, 3)) {
+		m_trees.setTreeType(m_treeType);
 		m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
 	}
 	// finish creating window

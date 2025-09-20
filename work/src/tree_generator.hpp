@@ -25,7 +25,8 @@ public:
     // Generate trees on terrain
     void generateTreesOnTerrain(const std::vector<cgra::mesh_vertex>& terrainVertices, 
                                 int meshResolution, float meshSize);
-    
+    void setTreeType(int type);
+
     // Draw all trees
     void draw(const glm::mat4& view, const glm::mat4& proj);
     
