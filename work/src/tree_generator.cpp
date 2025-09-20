@@ -50,6 +50,8 @@ void TreeGenerator::generateTreesOnTerrain(const vector<mesh_vertex>& terrainVer
 }
 
 void TreeGenerator::setTreeType(int type) {
+    lSystem.rules.clear();
+    
     switch(type) {
         case 0: // Simple tree
             lSystem.axiom = "F";

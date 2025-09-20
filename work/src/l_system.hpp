@@ -38,4 +38,7 @@ private:
         glm::vec3 direction;
         glm::mat4 rotation;
     };
+
+    // Helper function to add cylinder mesh
+    void addCylinder(cgra::mesh_builder& mb, glm::vec3 start, glm::vec3 end, float radius, unsigned int& vertexIndex);
 };

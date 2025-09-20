@@ -43,31 +43,22 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
     turtle.rotation = mat4(1.0f);
     
     unsigned int vertexIndex = 0;
+    float currentRadius = 0.1f;
+
     
     for (char c : lSystemString) {
         switch (c) {
             case 'F': {
-                // Draw a branch segment
+                // Draw a branch segment using cylinder
                 vec3 startPos = turtle.position;
                 vec3 endPos = turtle.position + turtle.direction * stepLength;
                 
-                // Create a simple cylinder for the branch
-                mesh_vertex v1, v2;
-                v1.pos = startPos;
-                v1.norm = normalize(turtle.direction);
-                v1.uv = vec2(0, 0);
-                
-                v2.pos = endPos;
-                v2.norm = normalize(turtle.direction);
-                v2.uv = vec2(1, 0);
-                
-                mb.push_vertex(v1);
-                mb.push_vertex(v2);
-                mb.push_indices({vertexIndex, vertexIndex + 1});
-                vertexIndex += 2;
+                addCylinder(mb, startPos, endPos, currentRadius, vertexIndex);
                 
                 // Move turtle to end position
                 turtle.position = endPos;
+                // make branches get thinner
+                currentRadius *= 0.95f;
                 break;
             }
             case '+': {
@@ -87,6 +78,7 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
             case '[': {
                 // Push current state
                 stateStack.push(turtle);
+                currentRadius *= 0.7f; // Make branches thinner
                 break;
             }
             case ']': {
@@ -94,6 +86,7 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
                 if (!stateStack.empty()) {
                     turtle = stateStack.top();
                     stateStack.pop();
+                    currentRadius *= 1.43f; // Restore thickness (inverse of 0.7)
                 }
                 break;
             }
@@ -104,7 +97,7 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
 }
 
 // Add helper function to create a cylinder between two points
-void addCylinder(mesh_builder& mb, vec3 start, vec3 end, float radius, 
+void LSystem::addCylinder(mesh_builder& mb, vec3 start, vec3 end, float radius, 
                  unsigned int& vertexIndex) {
     vec3 direction = normalize(end - start);
     float segmentLength = distance(start, end);
