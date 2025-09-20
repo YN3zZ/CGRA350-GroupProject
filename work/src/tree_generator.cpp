@@ -66,6 +66,10 @@ void TreeGenerator::setTreeType(int type) {
             lSystem.axiom = "F";
             lSystem.rules['F'] = "F[+F]F[-F][F]";
             break;
+        case 3: // 3D tree
+            lSystem.axiom = "F";
+            lSystem.rules['F'] = "F[+&F][-&F][^F][/F]";
+            break;
     }
 }
 

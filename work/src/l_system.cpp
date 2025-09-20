@@ -90,6 +90,30 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
                 }
                 break;
             }
+            case '&': { // Pitch down (rotate around X)
+                mat4 rotation = rotate(mat4(1.0f), radians(angle), vec3(1, 0, 0));
+                turtle.rotation = rotation * turtle.rotation;
+                turtle.direction = vec3(rotation * vec4(turtle.direction, 0));
+                break;
+            }
+            case '^': { // Pitch up (rotate around X)
+                mat4 rotation = rotate(mat4(1.0f), radians(-angle), vec3(1, 0, 0));
+                turtle.rotation = rotation * turtle.rotation;
+                turtle.direction = vec3(rotation * vec4(turtle.direction, 0));
+                break;
+            }
+            case '\\': { // Roll left (rotate around Y)
+                mat4 rotation = rotate(mat4(1.0f), radians(angle), vec3(0, 1, 0));
+                turtle.rotation = rotation * turtle.rotation;
+                turtle.direction = vec3(rotation * vec4(turtle.direction, 0));
+                break;
+            }
+            case '/': { // Roll right (rotate around Y)
+                mat4 rotation = rotate(mat4(1.0f), radians(-angle), vec3(0, 1, 0));
+                turtle.rotation = rotation * turtle.rotation;
+                turtle.direction = vec3(rotation * vec4(turtle.direction, 0));
+                break;
+            }
         }
     }
     
