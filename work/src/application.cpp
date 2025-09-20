@@ -158,12 +158,6 @@ void Application::renderGUI() {
     if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
         m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
-    if (ImGui::SliderFloat("Min Height", &m_trees.minHeight, 0.0f, 5.0f, "%.2f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderFloat("Max Slope", &m_trees.maxSlope, 0.0f, 1.0f, "%.2f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
     
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
@@ -183,6 +177,22 @@ void Application::renderGUI() {
     const char* treeTypes[] = {"Simple", "Bushy", "Willow", "3D Tree"};
     if (ImGui::Combo("Tree Type", &m_treeType, treeTypes, 4)) {
         m_trees.setTreeType(m_treeType);
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+
+    if (ImGui::SliderFloat("Branch Taper", &m_trees.branchTaper, 0.5f, 1.0f, "%.2f")) {
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+    if (ImGui::SliderInt("Cylinder Sides", &m_trees.cylinderSides, 4, 12)) {
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+    if (ImGui::SliderFloat("Min Scale", &m_trees.minTreeScale, 0.2f, 1.0f, "%.2f")) {
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+    if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 3.0f, "%.2f")) {
+        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    }
+    if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {
         m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     
