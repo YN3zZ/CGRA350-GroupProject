@@ -17,6 +17,8 @@ public:
     int treeCount = 50;
     float minHeight = 0.5f; // Minimum terrain height for tree placement
     float maxSlope = 0.8f; // Maximum slope for tree placement
+    float minTreeScale = 0.5f;
+    float maxTreeScale = 1.5f;
     
     // Generated trees
     std::vector<cgra::gl_mesh> trees;
