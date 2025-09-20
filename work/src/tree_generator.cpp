@@ -49,6 +49,24 @@ void TreeGenerator::generateTreesOnTerrain(const vector<mesh_vertex>& terrainVer
     }
 }
 
+void TreeGenerator::setTreeType(int type) {
+    switch(type) {
+        case 0: // Simple tree
+            lSystem.axiom = "F";
+            lSystem.rules['F'] = "FF+[+F-F-F]-[-F+F+F]";
+            break;
+        case 1: // Bushy tree
+            lSystem.axiom = "X";
+            lSystem.rules['X'] = "F[+X]F[-X]+X";
+            lSystem.rules['F'] = "FF";
+            break;
+        case 2: // Willow-like
+            lSystem.axiom = "F";
+            lSystem.rules['F'] = "F[+F]F[-F][F]";
+            break;
+    }
+}
+
 void TreeGenerator::draw(const mat4& view, const mat4& proj) {
     glUseProgram(shader);
     glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
