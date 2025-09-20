@@ -43,7 +43,10 @@ void TreeGenerator::generateTreesOnTerrain(const vector<mesh_vertex>& terrainVer
             trees.push_back(treeMesh);
             
             // Create transform matrix for this tree
-            mat4 transform = translate(mat4(1.0f), terrainPoint);
+            uniform_real_distribution<float> scaleDist(minTreeScale, maxTreeScale);
+            float scale = scaleDist(rng);
+            mat4 transform = translate(mat4(1.0f), terrainPoint) * 
+                            glm::scale(mat4(1.0f), vec3(scale));
             treeTransforms.push_back(transform);
         }
     }
