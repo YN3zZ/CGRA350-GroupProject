@@ -53,7 +53,7 @@ private:
 	TreeGenerator m_trees;
 	int m_treeType = 0;
 
-
+	
 public:
 	// setup
 	Application(GLFWwindow *);
