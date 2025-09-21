@@ -12,12 +12,16 @@ layout(location = 2) in vec2 aTexCoord;
 
 // model data (this must match the input of the vertex shader)
 out VertexData {
+	vec3 globalPos;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
 } v_out;
 
 void main() {
+	// Remember global position before modelView transformation for texture mapping.
+	v_out.globalPos = aPosition;
+
 	// transform vertex data to viewspace
 	v_out.position = (uModelViewMatrix * vec4(aPosition, 1)).xyz;
 	v_out.normal = normalize((uModelViewMatrix * vec4(aNormal, 0)).xyz);
