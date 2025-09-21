@@ -42,10 +42,19 @@ vec2 PerlinNoise::getHeightRange() {
 void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
+	// Set model, view and projection matrices, and height range for terrain coloring.
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
-	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
+	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
+
+	// Lighting params
+	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirection));
+	glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
+	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
+	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
+	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+
 	// Draw the terrain.
 	terrain.draw();
 }
@@ -78,7 +87,7 @@ gl_mesh PerlinNoise::createMesh() {
 			// Position, normal and uv of the vertex. Height is based on noise.
 			float height = generatePerlinNoise(vec2(x, z), octaveOffsets);
 			int vertIndex = i * padResolution + j;
-			vertexPositions[vertIndex] = vec3(x, height, z);;
+			vertexPositions[vertIndex] = vec3(x, height, z);
 		}
 	}
 

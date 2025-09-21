@@ -15,8 +15,9 @@ private:
 
 public:
 	GLuint shader = 0;
-	glm::vec3 color{ 0.7f };
+	glm::vec3 color{ 1.0f };
 	glm::mat4 modelTransform{ 1.0f };
+
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
 	float noisePersistence = 0.3f; // Height loss between octaves.
 	float noiseLacunarity = 2.0f; // Frequency increase between octaves.
@@ -26,8 +27,16 @@ public:
 	float meshSize = 5.0f; // Overall size.
 	int meshResolution = 100; // Square this to get total vertices.
 	cgra::gl_mesh terrain;
+
 	// Vertices vector exposed for other objects such as trees to generate on them.
 	std::vector<cgra::mesh_vertex> vertices; // May make this private and expose it through getters or as a parameter.
+
+	// Lighting params.
+	glm::vec3 lightDirection{ 0.276f, -0.276f, -0.921f };
+	glm::vec3 lightColor{ 1.0f };
+	float roughness = 0.5f;
+	float metallic = 0.1f; // 0 = normal, 1 = metal.
+	bool useOrenNayar = false;
 
 	// Initially generate the mesh then regenerate it when UI parameters changed.
 	PerlinNoise() { generate(); }
