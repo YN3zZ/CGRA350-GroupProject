@@ -50,6 +50,7 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
     
     unsigned int vertexIndex = 0;
     float currentRadius = 0.1f;
+    const float MIN_RADIUS = 0.001f;
     bool nextIsNewBranch = false;
     
     for (char c : lSystemString) {
@@ -66,8 +67,10 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
                     nextIsNewBranch = false;
                 }
                 
-                float endRadius = currentRadius * branchTaper;
-                addCylinder(mb, startPos, endPos, currentRadius, endRadius, vertexIndex);
+                float endRadius = std::max(MIN_RADIUS, currentRadius * branchTaper);
+                if (currentRadius >= MIN_RADIUS) {
+                    addCylinder(mb, startPos, endPos, currentRadius, endRadius, vertexIndex);
+                }
                 
                 turtle.position = endPos;
                 currentRadius = endRadius;
@@ -93,7 +96,7 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
                 state.radius = currentRadius;
                 stateStack.push(state);
                 
-                currentRadius *= 0.7f; // Make branches thinner
+                currentRadius = std::max(MIN_RADIUS, currentRadius * 0.7f);
                 nextIsNewBranch = true;
                 break;
             }
@@ -138,44 +141,44 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
 }
 
 // Add helper function to create a cylinder between two points
-void LSystem::addCylinder(mesh_builder& mb, vec3 start, vec3 end, float startRadius, 
+void LSystem::addCylinder(mesh_builder& mb, vec3 start, vec3 end, float startRadius,
     float endRadius, unsigned int& vertexIndex) {
     vec3 direction = normalize(end - start);
 
-    // Create a simple x-sided cylinder
     int sides = cylinderSides;
     for (int i = 0; i < sides; i++) {
         float angle1 = (2.0f * pi<float>() * i) / sides;
         float angle2 = (2.0f * pi<float>() * (i + 1)) / sides;
         
-        // Calculate vertex positions
         vec3 right = normalize(cross(direction, vec3(1, 0, 0)));
         if (length(right) < 0.001f) {
             right = normalize(cross(direction, vec3(0, 0, 1)));
         }
         vec3 up = normalize(cross(direction, right));
         
-        // Bottom vertices
-        vec3 v1 = start + startRadius * (cos(angle1) * right + sin(angle1) * up);
-        vec3 v2 = start + startRadius * (cos(angle2) * right + sin(angle2) * up);
+        // Calculate proper normals (pointing outward from cylinder axis)
+        vec3 normal1 = normalize(cos(angle1) * right + sin(angle1) * up);
+        vec3 normal2 = normalize(cos(angle2) * right + sin(angle2) * up);
         
-        // Top vertices
-        vec3 v3 = end + endRadius * (cos(angle1) * right + sin(angle1) * up);
-        vec3 v4 = end + endRadius * (cos(angle2) * right + sin(angle2) * up);
+        vec3 v1 = start + startRadius * normal1;
+        vec3 v2 = start + startRadius * normal2;
+        vec3 v3 = end + endRadius * normal1;
+        vec3 v4 = end + endRadius * normal2;
         
-        // Create triangles for cylinder side
-        mesh_vertex mv1{v1, normalize(v1 - start), vec2(0, 0)};
-        mesh_vertex mv2{v2, normalize(v2 - start), vec2(1, 0)};
-        mesh_vertex mv3{v3, normalize(v3 - end), vec2(0, 1)};
-        mesh_vertex mv4{v4, normalize(v4 - end), vec2(1, 1)};
+        // Use the calculated outward-pointing normals
+        mesh_vertex mv1{v1, normal1, vec2(float(i)/sides, 0)};
+        mesh_vertex mv2{v2, normal2, vec2(float(i+1)/sides, 0)};
+        mesh_vertex mv3{v3, normal1, vec2(float(i)/sides, 1)};
+        mesh_vertex mv4{v4, normal2, vec2(float(i+1)/sides, 1)};
         
         mb.push_vertex(mv1);
         mb.push_vertex(mv2);
         mb.push_vertex(mv3);
         mb.push_vertex(mv4);
         
-        mb.push_indices({vertexIndex, vertexIndex + 1, vertexIndex + 2});
-        mb.push_indices({vertexIndex + 1, vertexIndex + 3, vertexIndex + 2});
+        mb.push_indices({vertexIndex, vertexIndex + 2, vertexIndex + 1});
+        mb.push_indices({vertexIndex + 1, vertexIndex + 2, vertexIndex + 3});
+        
         vertexIndex += 4;
     }
 }

@@ -41,12 +41,17 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
     GLuint shader = sb.build();
 
+    shader_builder sb_instanced;
+    sb_instanced.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert_instanced.glsl"));
+    sb_instanced.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag_instanced.glsl"));
+    GLuint instanced_shader = sb_instanced.build();
+
     m_model = PerlinNoise();
     m_model.shader = shader;
     m_model.color = vec3(0.5f, 0.5f, 0.3f);
     
     // Initialize trees
-    m_trees.shader = shader;
+    m_trees.shader = instanced_shader;
     m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
 }
 
@@ -93,7 +98,7 @@ void Application::render() {
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(350, 500), ImGuiSetCond_Once); // Increased height for more controls
+    ImGui::SetNextWindowSize(ImVec2(350, 600), ImGuiSetCond_Once);
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
@@ -110,45 +115,44 @@ void Application::renderGUI() {
     ImGui::SameLine();
     if (ImGui::Button("Screenshot")) rgba_image::screenshot(true);
 
-    
     ImGui::Separator();
     ImGui::Text("Terrain Generation");
 
     // Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
     if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f)) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     if (ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f)) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     if (ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f)) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     if (ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f")) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     
     ImGui::Separator();
     
     if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) {
         m_model.generate();
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     
     ImGui::Separator();
@@ -156,44 +160,58 @@ void Application::renderGUI() {
     
     // Tree placement parameters
     if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
-    // Tree generation parameters
+    // L-System parameters that affect mesh generation
+    bool meshNeedsUpdate = false;
+    
     if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        meshNeedsUpdate = true;
     }
     if (ImGui::SliderInt("Iterations", &m_trees.lSystem.iterations, 1, 5)) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        meshNeedsUpdate = true;
     }
     if (ImGui::SliderFloat("Step Length", &m_trees.lSystem.stepLength, 0.1f, 2.0f, "%.2f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        meshNeedsUpdate = true;
     }
     
     // Tree type selection
     const char* treeTypes[] = {"Simple", "Bushy", "Willow", "3D Tree"};
     if (ImGui::Combo("Tree Type", &m_treeType, treeTypes, 4)) {
         m_trees.setTreeType(m_treeType);
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        meshNeedsUpdate = true;
     }
 
     if (ImGui::SliderFloat("Branch Taper", &m_trees.branchTaper, 0.5f, 1.0f, "%.2f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        meshNeedsUpdate = true;
     }
     if (ImGui::SliderInt("Cylinder Sides", &m_trees.cylinderSides, 4, 12)) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        meshNeedsUpdate = true;
     }
+    
+    // Placement parameters that don't affect mesh
+    bool placementNeedsUpdate = false;
+    
     if (ImGui::SliderFloat("Min Scale", &m_trees.minTreeScale, 0.2f, 1.0f, "%.2f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        placementNeedsUpdate = true;
     }
     if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 3.0f, "%.2f")) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        placementNeedsUpdate = true;
     }
     if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {
-        m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        placementNeedsUpdate = true;
+    }
+    
+    // Apply updates
+    if (meshNeedsUpdate) {
+        m_trees.markMeshDirty();
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    } else if (placementNeedsUpdate) {
+        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
     
     // finish creating window
