@@ -26,6 +26,7 @@ public:
 	float meshHeight = 2.5f; // Overall height.
 	float meshSize = 5.0f; // Overall size.
 	int meshResolution = 100; // Square this to get total vertices.
+	float textureSize = 1.0f;
 	cgra::gl_mesh terrain;
 
 	// Vertices vector exposed for other objects such as trees to generate on them.
