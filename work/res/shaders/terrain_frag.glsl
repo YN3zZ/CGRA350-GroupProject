@@ -10,9 +10,11 @@ uniform vec3 lightColor;
 uniform float roughness; // 0=smoothest, 1=roughest. We avoid 0 or 1 (division by 0 error).
 uniform float metallic; // 0=normal, 1=most metallic.
 uniform bool useOrenNayar;
+uniform vec2 heightRange;
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
+	vec3 globalPos;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
@@ -62,8 +64,17 @@ float orenNayarDiffuse(vec3 normDir, vec3 lightDir, vec3 viewDir) {
 
 
 void main() {
+	// Getting height proportion to map texture color based on terrain height.
+	float minHeight = heightRange.x;
+	float maxHeight = heightRange.y;
+	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalPos.y);
+	
+	vec3 rockColor = vec3(0.74f, 0.73f, 0.77f);
+	vec3 textureColor = mix(uColor, rockColor, heightProportion);
+
+
 	float ambientStrength = 0.1f;
-	vec3 ambient = ambientStrength * lightColor * uColor;
+	vec3 ambient = ambientStrength * lightColor * textureColor;
 
 	vec3 normDir = normalize(f_in.normal);
 	vec3 viewDir = normalize(-f_in.position);
@@ -91,7 +102,7 @@ void main() {
 	float reflectance = pow(m - 1, 2) / pow(m + 1, 2);
 	// This is for dieletric (non-metals), so we want to interpolate based on the metallic factor.
 	vec3 dielectricF0 = vec3(reflectance);
-	vec3 f0 = mix(dielectricF0, uColor, metallic);
+	vec3 f0 = mix(dielectricF0, textureColor, metallic);
 
 	// F component (schlicks approximation of fresnel).
 	vec3 schlick = f0 + (1 - f0) * pow(1 - VdotH, 5);
@@ -112,7 +123,7 @@ void main() {
 	// Reduce diffuse energy by specular reflectance (conservation of energy). Also metals don't have diffuse (shiny).
 	vec3 kd = (2.0f - schlick) * (1.0f - metallic);
 	// The diffuse uses the object color evenly scattered in all directions (using PI).
-	vec3 diffuse = kd * (uColor / PI) * diffuseFactor; 
+	vec3 diffuse = kd * (textureColor / PI) * diffuseFactor;
 	
 	// Add ambient light to diffuse and specular.
 	vec3 finalColor = ambient + diffuse + specular;
