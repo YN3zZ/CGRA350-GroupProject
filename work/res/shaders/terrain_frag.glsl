@@ -12,6 +12,7 @@ uniform float metallic; // 0=normal, 1=most metallic.
 uniform bool useOrenNayar;
 // Texture mapping.
 uniform vec2 heightRange;
+uniform float textureSize;
 uniform sampler2D textureSampler;
 
 // viewspace data (this must match the output of the fragment shader)
@@ -74,7 +75,8 @@ void main() {
 	//vec3 rockColor = vec3(0.74f, 0.73f, 0.77f);
 	//vec3 textureColor = mix(uColor, rockColor, heightProportion);
 
-	vec3 textureColor = texture(textureSampler, f_in.textureCoord).rgb;
+	vec2 uv = f_in.textureCoord * textureSize;
+	vec3 textureColor = texture(textureSampler, uv).rgb;
 
 
 	float ambientStrength = 0.1f;

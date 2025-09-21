@@ -109,18 +109,21 @@ void Application::renderGUI() {
 	ImGui::Separator();
 
 	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
-	if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) m_model.generate();
-	if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f)) m_model.generate();
-	if (ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f)) m_model.generate();
-	if (ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f)) m_model.generate();
-	if (ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f")) m_model.generate();
+	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f");
+	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
+	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
+	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
+	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
 	ImGui::Separator();
+	// Update model when mesh size changes since it is quite noticable on the texture.
 	if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) m_model.generate();
 	if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) m_model.generate();
-	if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) m_model.generate();
+	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f");
+	ImGui::SliderFloat("Texture Size", &m_model.textureSize, 0.1f, 5.0f, "%.1f");
 	ImGui::Separator();
 	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
 	ImGui::SliderFloat3("Light Direction", value_ptr(m_model.lightDirection), -1.0f, 1.0f); // Maybe remove the direction control.
+	if (ImGui::Button("Generate Terrain")) m_model.generate();
 
 	// finish creating window
 	ImGui::End();
