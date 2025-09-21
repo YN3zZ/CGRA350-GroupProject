@@ -10,7 +10,9 @@ uniform vec3 lightColor;
 uniform float roughness; // 0=smoothest, 1=roughest. We avoid 0 or 1 (division by 0 error).
 uniform float metallic; // 0=normal, 1=most metallic.
 uniform bool useOrenNayar;
+// Texture mapping.
 uniform vec2 heightRange;
+uniform sampler2D textureSampler;
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
@@ -69,8 +71,10 @@ void main() {
 	float maxHeight = heightRange.y;
 	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalPos.y);
 	
-	vec3 rockColor = vec3(0.74f, 0.73f, 0.77f);
-	vec3 textureColor = mix(uColor, rockColor, heightProportion);
+	//vec3 rockColor = vec3(0.74f, 0.73f, 0.77f);
+	//vec3 textureColor = mix(uColor, rockColor, heightProportion);
+
+	vec3 textureColor = texture(textureSampler, f_in.textureCoord).rgb;
 
 
 	float ambientStrength = 0.1f;

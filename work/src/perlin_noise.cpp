@@ -8,10 +8,21 @@
 #include "cgra/cgra_geometry.hpp"
 #include "cgra/cgra_mesh.hpp"
 #include "perlin_noise.hpp"
+#include "cgra/cgra_image.hpp"
 
 using namespace std;
 using namespace glm;
 using namespace cgra;
+
+
+// Initially generate the mesh and load the textures.
+PerlinNoise::PerlinNoise() {
+	generate();
+
+	string path = CGRA_SRCDIR + string("//res//textures//") + string("patchy-meadow1_albedo.png");
+	rgba_image textureImage = rgba_image(string(path));
+	texture = textureImage.uploadTexture();
+}
 
 
 // Generate the terrain mesh when UI parameters are changed instead of every frame.
@@ -54,6 +65,11 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+
+	// Send texture
+	glActiveTexture(GL_TEXTURE0); // Location 0
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(shader, "textureSampler"), 0);
 
 	// Draw the terrain.
 	terrain.draw();
