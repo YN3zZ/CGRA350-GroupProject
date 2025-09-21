@@ -34,12 +34,13 @@ public:
 	// Lighting params.
 	glm::vec3 lightDirection{ 0.276f, -0.276f, -0.921f };
 	glm::vec3 lightColor{ 1.0f };
-	float roughness = 0.5f;
-	float metallic = 0.1f; // 0 = normal, 1 = metal.
+	float roughness = 0.6f;
+	float metallic = 0.05f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = false;
+	GLuint texture;
 
-	// Initially generate the mesh then regenerate it when UI parameters changed.
-	PerlinNoise() { generate(); }
+	// Constructor and public methods.
+	PerlinNoise();
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();
 };
