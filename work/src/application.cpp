@@ -44,7 +44,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
 	m_model = PerlinNoise();
 	m_model.shader = shader;
-	m_model.color = vec3(0.5f, 0.5f, 0.3f);
+	m_model.color = vec3(0.7f, 0.7f, 0.3f);
 }
 
 
@@ -79,7 +79,6 @@ void Application::render() {
 	if (m_show_axis) drawAxis(view, proj);
 	glPolygonMode(GL_FRONT_AND_BACK, (m_showWireframe) ? GL_LINE : GL_FILL);
 
-
 	// draw the model
 	m_model.draw(view, proj);
 }
@@ -89,7 +88,7 @@ void Application::renderGUI() {
 
 	// setup window
 	ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(350, 360), ImGuiSetCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(360, 420), ImGuiSetCond_Once); // (width, height)
 	ImGui::Begin("Options", 0);
 
 	// display current camera parameters
@@ -119,6 +118,9 @@ void Application::renderGUI() {
 	if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) m_model.generate();
 	if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) m_model.generate();
 	if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) m_model.generate();
+	ImGui::Separator();
+	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
+	ImGui::SliderFloat3("Light Direction", value_ptr(m_model.lightDirection), -1.0f, 1.0f); // Maybe remove the direction control.
 
 	// finish creating window
 	ImGui::End();
