@@ -41,7 +41,8 @@ public:
 	GLuint texture;
 
 	// Constructor and public methods.
-	PerlinNoise();
+	PerlinNoise(GLuint shader, glm::vec3 color);
+	PerlinNoise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();
 };
