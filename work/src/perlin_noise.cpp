@@ -15,20 +15,30 @@ using namespace glm;
 using namespace cgra;
 
 
-// Initially generate the mesh and load the textures.
-PerlinNoise::PerlinNoise() {
-	generate();
-
+// Initially generate the mesh and load the textures. Initialise shader and color immediately.
+PerlinNoise::PerlinNoise(GLuint shader, vec3 color) : shader(shader), color(color) {
 	string path = CGRA_SRCDIR + string("//res//textures//") + string("patchy-meadow1_albedo.png");
 	rgba_image textureImage = rgba_image(string(path));
 	texture = textureImage.uploadTexture();
+
+	generate();
 }
 
 
 // Generate the terrain mesh when UI parameters are changed instead of every frame.
 void PerlinNoise::generate() {
 	terrain = createMesh();
-	// TODO: Linking to children nodes such as for tree drawing.
+	
+	// Only update uniforms for texture and textureSize when mesh is updated.
+	glUseProgram(shader);
+	glActiveTexture(GL_TEXTURE0); // Location 0
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(shader, "textureSampler"), 0);
+	glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
+
+	// Send uniform for height range and model color terrain coloring.
+	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
+	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
 }
 
 
@@ -53,12 +63,9 @@ vec2 PerlinNoise::getHeightRange() {
 void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
-	// Set model, view and projection matrices, and height range for terrain coloring.
+	// Set model, view and projection matrices.
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
-	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
-	glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
-	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
 
 	// Lighting params
 	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirection));
@@ -67,12 +74,7 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
 
-	// Send texture
-	glActiveTexture(GL_TEXTURE0); // Location 0
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(glGetUniformLocation(shader, "textureSampler"), 0);
-
-	// Draw the terrain.
+	// Draw the terrain mesh.
 	terrain.draw();
 }
 
