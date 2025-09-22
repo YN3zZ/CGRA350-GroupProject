@@ -42,9 +42,8 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
 	GLuint shader = sb.build();
 
-	m_model = PerlinNoise();
-	m_model.shader = shader;
-	m_model.color = vec3(0.6f, 0.65f, 0.5f);
+	vec3 color = vec3(0.6f, 0.65f, 0.5f);
+	m_model = PerlinNoise(shader, color);
 }
 
 
@@ -88,7 +87,7 @@ void Application::renderGUI() {
 
 	// setup window
 	ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(360, 420), ImGuiSetCond_Once); // (width, height)
+	ImGui::SetNextWindowSize(ImVec2(360, 450), ImGuiSetCond_Once); // (width, height)
 	ImGui::Begin("Options", 0);
 
 	// display current camera parameters
@@ -115,14 +114,13 @@ void Application::renderGUI() {
 	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
 	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
 	ImGui::Separator();
-	// Update model when mesh size changes since it is quite noticable on the texture.
-	if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) m_model.generate();
-	if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) m_model.generate();
+	ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
+	ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f);
 	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f");
 	ImGui::SliderFloat("Texture Size", &m_model.textureSize, 0.1f, 5.0f, "%.1f");
 	ImGui::Separator();
 	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
-	ImGui::SliderFloat3("Light Direction", value_ptr(m_model.lightDirection), -1.0f, 1.0f); // Maybe remove the direction control.
+	ImGui::SliderFloat3("Light Direction", value_ptr(m_model.lightDirection), -1.0f, 1.0f); // Maybe remove direction control.
 	if (ImGui::Button("Generate Terrain")) m_model.generate();
 
 	// finish creating window
