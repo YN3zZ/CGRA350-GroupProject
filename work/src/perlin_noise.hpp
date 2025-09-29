@@ -12,6 +12,9 @@ private:
 	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
 	cgra::gl_mesh createMesh();
 	glm::vec2 getHeightRange();
+	std::vector<cgra::mesh_vertex> vertices;
+	cgra::gl_mesh terrain;
+
 
 public:
 	GLuint shader = 0;
@@ -27,10 +30,6 @@ public:
 	float meshSize = 5.0f; // Overall size.
 	int meshResolution = 100; // Square this to get total vertices.
 	float textureSize = 1.0f;
-	cgra::gl_mesh terrain;
-
-	// Vertices vector exposed for other objects such as trees to generate on them.
-	std::vector<cgra::mesh_vertex> vertices; // May make this private and expose it through getters or as a parameter.
 
 	// Lighting params.
 	glm::vec3 lightDirection{ 0.0f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
@@ -38,7 +37,7 @@ public:
 	float roughness = 0.6f;
 	float metallic = 0.05f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = false;
-	GLuint texture;
+	std::vector<GLuint> textures;
 
 	// Constructor and public methods.
 	PerlinNoise(GLuint shader, glm::vec3 color);

@@ -15,12 +15,18 @@ using namespace glm;
 using namespace cgra;
 
 
+const vector<string> texturePaths = { "patchy-meadow1_albedo.png" };
+
 // Initially generate the mesh and load the textures. Initialise shader and color immediately.
 PerlinNoise::PerlinNoise(GLuint shader, vec3 color) : shader(shader), color(color) {
-	string path = CGRA_SRCDIR + string("//res//textures//") + string("patchy-meadow1_albedo.png");
-	rgba_image textureImage = rgba_image(string(path));
-	texture = textureImage.uploadTexture();
+	// Load all the textures using the path strings.
+	for (int i = 0; i < texturePaths.size(); i++) {
+		string path = CGRA_SRCDIR + string("//res//textures//") + texturePaths[i];
+		rgba_image textureImage = rgba_image(string(path));
+		textures.push_back(textureImage.uploadTexture());
+	}
 
+	// Generate the mesh immediately. Remove if using empty constructor.
 	generate();
 }
 
@@ -31,10 +37,13 @@ void PerlinNoise::generate() {
 	
 	// Only update uniforms for texture and textureSize when mesh is updated.
 	glUseProgram(shader);
-	glActiveTexture(GL_TEXTURE0); // Location 0
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(glGetUniformLocation(shader, "textureSampler"), 0);
-	glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
+	for (int i = 0; i < texturePaths.size(); i++) {
+		int location = 0;
+		glActiveTexture(GL_TEXTURE0 + location); // GL_TEXTURE0 = 0x84C0 = 33984. They add 1 per subsequent location.
+		glBindTexture(GL_TEXTURE_2D, textures[location]);
+		glUniform1i(glGetUniformLocation(shader, "textureSampler"), location);
+		glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
+	}
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
