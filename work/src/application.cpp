@@ -120,7 +120,7 @@ void Application::renderGUI() {
 	ImGui::SliderFloat("Texture Size", &m_model.textureSize, 0.1f, 5.0f, "%.1f");
 	ImGui::Separator();
 	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
-	ImGui::SliderFloat3("Light Direction", value_ptr(m_model.lightDirection), -1.0f, 1.0f); // Maybe remove direction control.
+	ImGui::SliderFloat("Light Angle", &m_model.lightDirection.x, -1.0f, 1.0f);
 	if (ImGui::Button("Generate Terrain")) m_model.generate();
 
 	// finish creating window
