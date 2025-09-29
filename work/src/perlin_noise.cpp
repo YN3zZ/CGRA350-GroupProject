@@ -222,3 +222,17 @@ float PerlinNoise::generatePerlinNoise(vec2 pos, const vector<vec2> &octaveOffse
 	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * meshHeight; // Also map back to positive range.
 	return finalHeight;
 }
+
+
+// For drawing trees on the terrain.
+vec3 PerlinNoise::sampleVertex(vec2 position) {
+	int vertCount = meshResolution - 1;
+	float u = (position.x + 0.5f) / meshScale;
+	float v = (position.y + 0.5f) / meshScale;
+
+	int i = std::clamp(int(u * (meshResolution - 1)), 0, meshResolution - 1);
+	int j = std::clamp(int(v * (meshResolution - 1)), 0, meshResolution - 1);
+
+	int index = i * meshResolution + j;
+	return vertices[index].pos;
+}

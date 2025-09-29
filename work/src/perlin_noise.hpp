@@ -44,4 +44,5 @@ public:
 	PerlinNoise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();
+	glm::vec3 sampleVertex(glm::vec2 position);
 };
