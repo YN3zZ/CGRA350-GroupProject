@@ -33,7 +33,7 @@ public:
 	std::vector<cgra::mesh_vertex> vertices; // May make this private and expose it through getters or as a parameter.
 
 	// Lighting params.
-	glm::vec3 lightDirection{ 0.276f, -0.276f, -0.921f };
+	glm::vec3 lightDirection{ 0.0f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
 	glm::vec3 lightColor{ 1.0f };
 	float roughness = 0.6f;
 	float metallic = 0.05f; // 0 = normal, 1 = metal.
