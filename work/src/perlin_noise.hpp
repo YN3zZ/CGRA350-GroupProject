@@ -27,9 +27,9 @@ public:
 	float noiseScale = 0.5f; // Spread of noise.
 	int noiseOctaves = 4; // Higher octaves add finer details.
 	float meshHeight = 2.5f; // Overall height.
-	float meshSize = 5.0f; // Overall size.
+	float meshScale = 5.0f; // Overall size of mesh.
 	int meshResolution = 100; // Square this to get total vertices.
-	float textureSize = 1.0f;
+	float textureScale = 1.0f; // Size of texture.
 
 	// Lighting params.
 	glm::vec3 lightDirection{ 0.0f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.

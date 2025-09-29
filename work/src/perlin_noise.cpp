@@ -15,7 +15,7 @@ using namespace glm;
 using namespace cgra;
 
 
-const vector<string> texturePaths = { "patchy-meadow1_albedo.png" };
+const vector<string> texturePaths = { "sandyground1_Base_Color.png", "patchy-meadow1_albedo.png", "slatecliffrock-albedo.png" };
 
 // Initially generate the mesh and load the textures. Initialise shader and color immediately.
 PerlinNoise::PerlinNoise(GLuint shader, vec3 color) : shader(shader), color(color) {
@@ -44,8 +44,8 @@ void PerlinNoise::generate() {
 		string name = "textures[" + to_string(i) + "]";
 		glUniform1i(glGetUniformLocation(shader, name.c_str()), i); // Or glUniform1iv and send all indices at once.
 	}
-
-	glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
+	glUniform1i(glGetUniformLocation(shader, "numTextures"), texturePaths.size());
+	glUniform1f(glGetUniformLocation(shader, "textureScale"), meshScale / (5.0f * textureScale));
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
@@ -111,8 +111,8 @@ gl_mesh PerlinNoise::createMesh() {
 			float v = j / (padResolution - 1.0f);
 			// Rescale the mesh to the original size after padding.
 			float rescaling = (padResolution - 1.0f) / (meshResolution - 1.0f);
-			float x = (-1.0f + 2.0f * u) * meshSize * rescaling;
-			float z = (-1.0f + 2.0f * v) * meshSize * rescaling;
+			float x = (-1.0f + 2.0f * u) * meshScale * rescaling;
+			float z = (-1.0f + 2.0f * v) * meshScale * rescaling;
 
 			// Position, normal and uv of the vertex. Height is based on noise.
 			float height = generatePerlinNoise(vec2(x, z), octaveOffsets);
