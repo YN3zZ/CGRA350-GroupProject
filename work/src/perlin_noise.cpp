@@ -38,12 +38,14 @@ void PerlinNoise::generate() {
 	// Only update uniforms for texture and textureSize when mesh is updated.
 	glUseProgram(shader);
 	for (int i = 0; i < texturePaths.size(); i++) {
-		int location = 0;
-		glActiveTexture(GL_TEXTURE0 + location); // GL_TEXTURE0 = 0x84C0 = 33984. They add 1 per subsequent location.
-		glBindTexture(GL_TEXTURE_2D, textures[location]);
-		glUniform1i(glGetUniformLocation(shader, "textureSampler"), location);
-		glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
+		glActiveTexture(GL_TEXTURE0 + i); // GL_TEXTURE0 = 0x84C0 = 33984. They add 1 per subsequent location.
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		// Access array element of uniform textures shader parameter.
+		string name = "textures[" + to_string(i) + "]";
+		glUniform1i(glGetUniformLocation(shader, name.c_str()), i); // Or glUniform1iv and send all indices at once.
 	}
+
+	glUniform1f(glGetUniformLocation(shader, "textureSize"), meshSize / (5.0f * textureSize));
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));

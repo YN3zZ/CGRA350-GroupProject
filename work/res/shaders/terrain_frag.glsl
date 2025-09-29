@@ -13,7 +13,7 @@ uniform bool useOrenNayar;
 // Texture mapping.
 uniform vec2 heightRange;
 uniform float textureSize;
-uniform sampler2D textureSampler;
+uniform sampler2D textures[8]; // Up to 8 textures.
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
@@ -76,7 +76,7 @@ void main() {
 	//vec3 textureColor = mix(uColor, rockColor, heightProportion);
 
 	vec2 uv = f_in.textureCoord * textureSize;
-	vec3 textureColor = texture(textureSampler, uv).rgb;
+	vec3 textureColor = texture(textures[0], uv).rgb;
 
 
 	float ambientStrength = 0.1f;
