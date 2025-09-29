@@ -12,8 +12,9 @@ uniform float metallic; // 0=normal, 1=most metallic.
 uniform bool useOrenNayar;
 // Texture mapping.
 uniform vec2 heightRange;
-uniform float textureSize;
+uniform float textureScale;
 uniform sampler2D textures[8]; // Up to 8 textures.
+uniform int numTextures; // How many have been set.
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
@@ -71,12 +72,21 @@ void main() {
 	float minHeight = heightRange.x;
 	float maxHeight = heightRange.y;
 	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalPos.y);
+	vec2 uv = f_in.textureCoord * textureScale;
 	
-	//vec3 rockColor = vec3(0.74f, 0.73f, 0.77f);
-	//vec3 textureColor = mix(uColor, rockColor, heightProportion);
-
-	vec2 uv = f_in.textureCoord * textureSize;
-	vec3 textureColor = texture(textures[0], uv).rgb;
+	// Scale height to the texture array.
+	float scaledHeight = heightProportion * numTextures;
+	// Combine the textures to an overall color based on height.
+	vec3 textureColor = vec3(0.0);
+	float totalWeight = 0.0;
+	for (int i = 0; i < numTextures; i++) {
+		// Weight for how close the current height is to the middle of the textures band.
+		float weight = max(1.0 - abs(scaledHeight - i - 0.5f), 0.0f);
+		textureColor += texture(textures[i], uv).rgb * weight;
+		totalWeight += weight;
+	}
+	// Normalize so the sum of contributions is 1 (solid texture to avoid light/dark patches).
+	textureColor /= totalWeight;
 
 
 	float ambientStrength = 0.1f;

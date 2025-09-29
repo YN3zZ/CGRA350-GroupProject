@@ -42,7 +42,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
 	GLuint shader = sb.build();
 
-	vec3 color = vec3(0.6f, 0.65f, 0.5f);
+	vec3 color = vec3(1);
 	m_model = PerlinNoise(shader, color);
 }
 
@@ -115,9 +115,9 @@ void Application::renderGUI() {
 	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
 	ImGui::Separator();
 	ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
-	ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f);
+	ImGui::SliderFloat("Mesh Size", &m_model.meshScale, 0.1f, 500.0f, "%.1f", 4.0f);
 	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f");
-	ImGui::SliderFloat("Texture Size", &m_model.textureSize, 0.1f, 5.0f, "%.1f");
+	ImGui::SliderFloat("Texture Size", &m_model.textureScale, 0.1f, 5.0f, "%.1f");
 	ImGui::Separator();
 	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
 	ImGui::SliderFloat("Light Angle", &m_model.lightDirection.x, -1.0f, 1.0f);
