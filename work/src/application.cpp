@@ -48,10 +48,10 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
 	vec3 color = vec3(1);
 	m_model = PerlinNoise(shader, color);
-    
+
     // Initialize trees
     m_trees.shader = instanced_shader;
-    m_trees.generateTreesOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+    m_trees.generateTreesOnTerrain(&m_model);
 }
 
 
@@ -138,7 +138,7 @@ void Application::renderGUI() {
     
     // Tree placement parameters
     if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(&m_model);
     }
     
     ImGui::Separator();
@@ -187,9 +187,9 @@ void Application::renderGUI() {
     // Apply updates
     if (meshNeedsUpdate) {
         m_trees.markMeshDirty();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(&m_model);
     } else if (placementNeedsUpdate) {
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
+        m_trees.regenerateOnTerrain(&m_model);
     }
 
 	// finish creating window
