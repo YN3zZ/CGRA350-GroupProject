@@ -37,6 +37,7 @@ public:
 	float metallic = 0.05f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = false;
 	std::vector<GLuint> textures;
+	std::vector<GLuint> normalMaps;
 
 	// Constructor and public methods.
 	PerlinNoise(GLuint shader);
