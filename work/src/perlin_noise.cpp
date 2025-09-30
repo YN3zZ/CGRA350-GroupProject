@@ -15,15 +15,17 @@ using namespace glm;
 using namespace cgra;
 
 
-const vector<string> texturePaths = { "sandyground1_Base_Color.png", "patchy-meadow1_albedo.png", "slatecliffrock-albedo.png" };
+const vector<string> textureNames = { "sandyground1", "patchy-meadow1", "slatecliffrock" };
 
 // Initially generate the mesh and load the textures. Initialise shader and color immediately.
 PerlinNoise::PerlinNoise(GLuint shader) : shader(shader) {
 	// Load all the textures using the path strings.
-	for (int i = 0; i < texturePaths.size(); i++) {
-		string path = CGRA_SRCDIR + string("//res//textures//") + texturePaths[i];
-		rgba_image textureImage = rgba_image(string(path));
+	for (int i = 0; i < textureNames.size(); i++) {
+		string pathStart = CGRA_SRCDIR + string("//res//textures//") + textureNames[i];
+		rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
+		rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
 		textures.push_back(textureImage.uploadTexture());
+		normalMaps.push_back(normalImage.uploadTexture());
 	}
 
 	// Generate the mesh immediately. Remove if using empty constructor.
@@ -37,14 +39,23 @@ void PerlinNoise::generate() {
 	
 	// Only update uniforms for texture and textureSize when mesh is updated.
 	glUseProgram(shader);
-	for (int i = 0; i < texturePaths.size(); i++) {
-		glActiveTexture(GL_TEXTURE0 + i); // GL_TEXTURE0 = 0x84C0 = 33984. They add 1 per subsequent location.
+	int textureCount = textureNames.size();
+	for (int i = 0; i < textureCount; i++) {
+		// Textures
+		glActiveTexture(GL_TEXTURE0 + i); // GL_TEXTURE0 = 0x84C0 = 33984. Add 1 for each subsequent location.
 		glBindTexture(GL_TEXTURE_2D, textures[i]);
 		// Access array element of uniform textures shader parameter.
-		string name = "textures[" + to_string(i) + "]";
-		glUniform1i(glGetUniformLocation(shader, name.c_str()), i); // Or glUniform1iv and send all indices at once.
+		string name = "uTextures[" + to_string(i) + "]";
+		glUniform1i(glGetUniformLocation(shader, name.c_str()), i);
+
+		// Normal Maps
+		glActiveTexture(GL_TEXTURE12 + i);
+		glBindTexture(GL_TEXTURE_2D, normalMaps[i]);
+		// Access array element of uniform textures shader parameter.
+		name = "uNormalMaps[" + to_string(i) + "]";
+		glUniform1i(glGetUniformLocation(shader, name.c_str()), 12 + i);
 	}
-	glUniform1i(glGetUniformLocation(shader, "numTextures"), texturePaths.size());
+	glUniform1i(glGetUniformLocation(shader, "numTextures"), textureCount);
 	glUniform1f(glGetUniformLocation(shader, "textureScale"), meshScale / (5.0f * textureScale));
 
 	// Send uniform for height range and model color terrain coloring.

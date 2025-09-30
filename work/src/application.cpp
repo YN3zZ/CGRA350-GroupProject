@@ -47,7 +47,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     GLuint instanced_shader = sb_instanced.build();
 
 	m_model = PerlinNoise(shader);
-
+    
     // Initialize trees
     m_trees.shader = instanced_shader;
     m_trees.generateTreesOnTerrain(&m_model);
