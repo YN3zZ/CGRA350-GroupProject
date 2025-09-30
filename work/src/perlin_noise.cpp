@@ -8,26 +8,84 @@
 #include "cgra/cgra_geometry.hpp"
 #include "cgra/cgra_mesh.hpp"
 #include "perlin_noise.hpp"
+#include "cgra/cgra_image.hpp"
 
 using namespace std;
 using namespace glm;
 using namespace cgra;
 
 
+const vector<string> texturePaths = { "sandyground1_Base_Color.png", "patchy-meadow1_albedo.png", "slatecliffrock-albedo.png" };
+
+// Initially generate the mesh and load the textures. Initialise shader and color immediately.
+PerlinNoise::PerlinNoise(GLuint shader, vec3 color) : shader(shader), color(color) {
+	// Load all the textures using the path strings.
+	for (int i = 0; i < texturePaths.size(); i++) {
+		string path = CGRA_SRCDIR + string("//res//textures//") + texturePaths[i];
+		rgba_image textureImage = rgba_image(string(path));
+		textures.push_back(textureImage.uploadTexture());
+	}
+
+	// Generate the mesh immediately. Remove if using empty constructor.
+	generate();
+}
+
+
 // Generate the terrain mesh when UI parameters are changed instead of every frame.
 void PerlinNoise::generate() {
 	terrain = createMesh();
-	// TODO: Linking to children nodes such as for tree drawing.
+	
+	// Only update uniforms for texture and textureSize when mesh is updated.
+	glUseProgram(shader);
+	for (int i = 0; i < texturePaths.size(); i++) {
+		glActiveTexture(GL_TEXTURE0 + i); // GL_TEXTURE0 = 0x84C0 = 33984. They add 1 per subsequent location.
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		// Access array element of uniform textures shader parameter.
+		string name = "textures[" + to_string(i) + "]";
+		glUniform1i(glGetUniformLocation(shader, name.c_str()), i); // Or glUniform1iv and send all indices at once.
+	}
+	glUniform1i(glGetUniformLocation(shader, "numTextures"), texturePaths.size());
+	glUniform1f(glGetUniformLocation(shader, "textureScale"), meshScale / (5.0f * textureScale));
+
+	// Send uniform for height range and model color terrain coloring.
+	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
+	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
+}
+
+
+// Get the min and max height of the terrain for texturing.
+vec2 PerlinNoise::getHeightRange() {
+	// Min and max height initially are the height of the first vertex.
+	vec2 heightRange(vertices[0].pos.y);
+	for (int i = 1; i < vertices.size(); i++) {
+		float vertHeight = vertices[i].pos.y;
+		// Adjust the min/max if any vertex is lower/higher.
+		if (heightRange.x > vertHeight) {
+			heightRange.x = vertHeight;
+		}
+		if (heightRange.y < vertHeight) {
+			heightRange.y = vertHeight;
+		}
+	}
+	return heightRange;
 }
 
 
 void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
+	// Set model, view and projection matrices.
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 1, false, value_ptr(proj));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
-	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
-	// Draw the terrain.
+
+	// Lighting params
+	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirection));
+	glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
+	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
+	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
+	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+
+	// Draw the terrain mesh.
 	terrain.draw();
 }
 
@@ -53,13 +111,13 @@ gl_mesh PerlinNoise::createMesh() {
 			float v = j / (padResolution - 1.0f);
 			// Rescale the mesh to the original size after padding.
 			float rescaling = (padResolution - 1.0f) / (meshResolution - 1.0f);
-			float x = (-1.0f + 2.0f * u) * meshSize * rescaling;
-			float z = (-1.0f + 2.0f * v) * meshSize * rescaling;
+			float x = (-1.0f + 2.0f * u) * meshScale * rescaling;
+			float z = (-1.0f + 2.0f * v) * meshScale * rescaling;
 
 			// Position, normal and uv of the vertex. Height is based on noise.
 			float height = generatePerlinNoise(vec2(x, z), octaveOffsets);
 			int vertIndex = i * padResolution + j;
-			vertexPositions[vertIndex] = vec3(x, height, z);;
+			vertexPositions[vertIndex] = vec3(x, height, z);
 		}
 	}
 
@@ -163,4 +221,18 @@ float PerlinNoise::generatePerlinNoise(vec2 pos, const vector<vec2> &octaveOffse
 	float normalizedHeight = noiseHeight / maxHeight;
 	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * meshHeight; // Also map back to positive range.
 	return finalHeight;
+}
+
+
+// For drawing trees on the terrain.
+vec3 PerlinNoise::sampleVertex(vec2 position) {
+	int vertCount = meshResolution - 1;
+	float u = (position.x + 0.5f) / meshScale;
+	float v = (position.y + 0.5f) / meshScale;
+
+	int i = std::clamp(int(u * (meshResolution - 1)), 0, meshResolution - 1);
+	int j = std::clamp(int(v * (meshResolution - 1)), 0, meshResolution - 1);
+
+	int index = i * meshResolution + j;
+	return vertices[index].pos;
 }
