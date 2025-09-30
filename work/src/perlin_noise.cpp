@@ -15,17 +15,15 @@ using namespace glm;
 using namespace cgra;
 
 
-const vector<string> textureNames = { /*"sandyground1",*/ "patchy-meadow1"/*, "slatecliffrock"*/ };
+const vector<string> textureNames = { "sandyground1", "patchy-meadow1", "slatecliffrock" };
 
 // Initially generate the mesh and load the textures. Initialise shader and color immediately.
 PerlinNoise::PerlinNoise(GLuint shader) : shader(shader) {
 	// Load all the textures using the path strings.
 	for (int i = 0; i < textureNames.size(); i++) {
 		string pathStart = CGRA_SRCDIR + string("/res/textures/") + textureNames[i];
-		string texturePath = pathStart + string("_albedo.png");
-		string normalPath = pathStart + string("_normal.png");
-		rgba_image textureImage = rgba_image(texturePath);
-		rgba_image normalImage = rgba_image(normalPath);
+		rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
+		rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
 		textures.push_back(textureImage.uploadTexture());
 		normalMaps.push_back(normalImage.uploadTexture());
 	}
