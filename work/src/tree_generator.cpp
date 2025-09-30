@@ -1,6 +1,6 @@
-// tree_generator.cpp
 #include "tree_generator.hpp"
 #include "perlin_noise.hpp"
+#include "cgra/cgra_image.hpp"
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -15,6 +15,23 @@ TreeGenerator::~TreeGenerator() {
     if (instanceVBO != 0) {
         glDeleteBuffers(1, &instanceVBO);
     }
+}
+
+void TreeGenerator::loadTextures() {
+    const vector<string> barkTexturePaths = {
+        "ash-tree-bark_albedo.png",
+        "ash-tree-bark_normal-ogl.png",
+        "ash-tree-bark_roughness.png",
+        "ash-tree-bark_metallic.png"
+    };
+
+    for (int i = 0; i < barkTexturePaths.size(); i++) {
+        string path = CGRA_SRCDIR + string("//res//textures//") + barkTexturePaths[i];
+        rgba_image textureImage = rgba_image(string(path));
+        barkTextures.push_back(textureImage.uploadTexture());
+    }
+
+    useTextures = true;
 }
 
 void TreeGenerator::regenerateTreeMesh() {
@@ -140,31 +157,53 @@ void TreeGenerator::setTreeType(int type) {
     needsMeshRegeneration = true;
 }
 
-void TreeGenerator::draw(const mat4& view, const mat4& proj) {
+void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& viewPos) {
     if (treeTransforms.empty()) return;
-    
+
     // Ensure mesh is generated
     if (needsMeshRegeneration) {
         regenerateTreeMesh();
         setupInstancing();
     }
-    
+
     glUseProgram(shader);
-    
-    glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"), 
+
+    glUniformMatrix4fv(glGetUniformLocation(shader, "uProjectionMatrix"),
                         1, false, value_ptr(proj));
-    glUniformMatrix4fv(glGetUniformLocation(shader, "uViewMatrix"), 
+    glUniformMatrix4fv(glGetUniformLocation(shader, "uViewMatrix"),
                         1, false, value_ptr(view));
-    
+
     // Set color uniform
     glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
-    
+
+    // Set lighting uniforms
+    glUniform3fv(glGetUniformLocation(shader, "uLightDir"), 1, value_ptr(lightDir));
+    glUniform3fv(glGetUniformLocation(shader, "uViewPos"), 1, value_ptr(viewPos));
+
+    glUniform1i(glGetUniformLocation(shader, "uUseTextures"), useTextures ? 1 : 0);
+
+    if (useTextures) {
+        // Start from GL_TEXTURE4 to avoid conflicts with terrain textures
+        const vector<string> textureUniforms = {
+            "uAlbedoTexture",
+            "uNormalTexture",
+            "uRoughnessTexture",
+            "uMetallicTexture"
+        };
+
+        for (int i = 0; i < barkTextures.size(); i++) {
+            glActiveTexture(GL_TEXTURE4 + i);
+            glBindTexture(GL_TEXTURE_2D, barkTextures[i]);
+            glUniform1i(glGetUniformLocation(shader, textureUniforms[i].c_str()), 4 + i);
+        }
+    }
+
     // Bind VAO and draw all instances with one call
     glBindVertexArray(treeMesh.vao);
-    glDrawElementsInstanced(GL_TRIANGLES, 
+    glDrawElementsInstanced(GL_TRIANGLES,
                            treeMesh.index_count,
-                           GL_UNSIGNED_INT, 
-                           0, 
+                           GL_UNSIGNED_INT,
+                           0,
                            treeTransforms.size());
     glBindVertexArray(0);
 }
