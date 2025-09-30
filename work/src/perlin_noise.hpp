@@ -18,7 +18,6 @@ private:
 
 public:
 	GLuint shader = 0;
-	glm::vec3 color{ 1.0f };
 	glm::mat4 modelTransform{ 1.0f };
 
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
@@ -32,15 +31,16 @@ public:
 	float textureScale = 1.0f; // Size of texture.
 
 	// Lighting params.
-	glm::vec3 lightDirection{ 0.0f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
+	glm::vec3 lightDirection{ 0.2f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
 	glm::vec3 lightColor{ 1.0f };
-	float roughness = 0.6f;
+	float roughness = 0.4f;
 	float metallic = 0.05f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = false;
 	std::vector<GLuint> textures;
+	std::vector<GLuint> normalMaps;
 
 	// Constructor and public methods.
-	PerlinNoise(GLuint shader, glm::vec3 color);
+	PerlinNoise(GLuint shader);
 	PerlinNoise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();
