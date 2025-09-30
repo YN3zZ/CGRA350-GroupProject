@@ -51,7 +51,7 @@ private:
 	// geometry
 	PerlinNoise m_model;
 	TreeGenerator m_trees;
-	int m_treeType = 0;
+	int m_treeType = 3;
 
 	
 public:
