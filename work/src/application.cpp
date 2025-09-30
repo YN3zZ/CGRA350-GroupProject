@@ -46,8 +46,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     sb_instanced.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag_instanced.glsl"));
     GLuint instanced_shader = sb_instanced.build();
 
-	vec3 color = vec3(1);
-	m_model = PerlinNoise(shader, color);
+	m_model = PerlinNoise(shader);
 
     // Initialize trees
     m_trees.shader = instanced_shader;
