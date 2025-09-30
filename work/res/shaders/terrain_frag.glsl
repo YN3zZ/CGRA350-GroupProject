@@ -102,7 +102,7 @@ void main() {
 	for (int i = 0; i < numTextures; i++) {
 		// Weight for how close the current height is to the middle of the textures band.
 		float weight = max(1.0 - abs(scaledHeight - i - 0.5f), 0.0f);
-		textureColor += texture(textures[i], uv).rgb * weight;
+		textureColor += texture(uTextures[i], uv).rgb * weight;
 		normalMap += texture(uNormalMaps[i], uv).rgb * weight;
 		totalWeight += weight;
 	}

@@ -30,16 +30,8 @@ void main() {
 	v_out.normal = normalize((uModelViewMatrix * vec4(aNormal, 0)).xyz);
 	v_out.textureCoord = aTexCoord;
 
-    // Lecture: "tangent vectors for Sphere object can be easily calculated"
-    vec3 tangent;
-    if (abs(worldPos.y) < 0.999) {
-        // tangent in longitude direction
-        tangent = normalize(vec3(-worldPos.z, 0.0, worldPos.x));
-    }
-    else {
-        // at poles, avoid singularity
-        tangent = vec3(1.0, 0.0, 0.0);
-    }
+    // Tangent on the x-axis for grid-based heightmap terrain.
+    vec3 tangent = vec3(1.0, 0.0, 0.0);
 
     // Lecture: need proper orthogonal basis for TBN matrix
     tangent = normalize(tangent - dot(tangent, aNormal) * aNormal);
