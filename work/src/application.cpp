@@ -36,14 +36,22 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 
 
 Application::Application(GLFWwindow *window) : m_window(window) {
-	
 	shader_builder sb;
     sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
 	GLuint shader = sb.build();
 
+    shader_builder sb_instanced;
+    sb_instanced.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert_instanced.glsl"));
+    sb_instanced.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag_instanced.glsl"));
+    GLuint instanced_shader = sb_instanced.build();
+
 	vec3 color = vec3(1);
 	m_model = PerlinNoise(shader, color);
+
+    // Initialize trees
+    m_trees.shader = instanced_shader;
+    m_trees.generateTreesOnTerrain(&m_model);
 }
 
 
@@ -80,33 +88,34 @@ void Application::render() {
 
 	// draw the model
 	m_model.draw(view, proj);
+	// draw trees
+	m_trees.draw(view, proj);
 }
 
 
 void Application::renderGUI() {
+    // setup window
+    ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(350, 600), ImGuiSetCond_Once);
+    ImGui::Begin("Options", 0);
 
-	// setup window
-	ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(360, 450), ImGuiSetCond_Once); // (width, height)
-	ImGui::Begin("Options", 0);
+    // display current camera parameters
+    ImGui::Text("Application %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
+    ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
+    ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
 
-	// display current camera parameters
-	ImGui::Text("Application %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
-	ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
-	ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
+    // helpful drawing options
+    ImGui::Checkbox("Show axis", &m_show_axis);
+    ImGui::SameLine();
+    ImGui::Checkbox("Show grid", &m_show_grid);
+    ImGui::Checkbox("Wireframe", &m_showWireframe);
+    ImGui::SameLine();
+    if (ImGui::Button("Screenshot")) rgba_image::screenshot(true);
 
-	// helpful drawing options
-	ImGui::Checkbox("Show axis", &m_show_axis);
-	ImGui::SameLine();
-	ImGui::Checkbox("Show grid", &m_show_grid);
-	ImGui::Checkbox("Wireframe", &m_showWireframe);
-	ImGui::SameLine();
-	if (ImGui::Button("Screenshot")) rgba_image::screenshot(true);
-
-	
-	ImGui::Separator();
-
+    ImGui::Separator();
+    ImGui::Text("Terrain Generation");
+    
 	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
 	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f");
 	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
@@ -122,6 +131,66 @@ void Application::renderGUI() {
 	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
 	ImGui::SliderFloat("Light Angle", &m_model.lightDirection.x, -1.0f, 1.0f);
 	if (ImGui::Button("Generate Terrain")) m_model.generate();
+
+    
+    ImGui::Separator();
+    ImGui::Text("L-System Trees");
+    
+    // Tree placement parameters
+    if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
+        m_trees.regenerateOnTerrain(&m_model);
+    }
+    
+    ImGui::Separator();
+    ImGui::Text("L-System Parameters");
+    
+    // L-System parameters that affect mesh generation
+    bool meshNeedsUpdate = false;
+    
+    if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
+        meshNeedsUpdate = true;
+    }
+    if (ImGui::SliderInt("Iterations", &m_trees.lSystem.iterations, 1, 5)) {
+        meshNeedsUpdate = true;
+    }
+    if (ImGui::SliderFloat("Step Length", &m_trees.lSystem.stepLength, 0.1f, 2.0f, "%.2f")) {
+        meshNeedsUpdate = true;
+    }
+    
+    // Tree type selection
+    const char* treeTypes[] = {"Simple", "Bushy", "Willow", "3D Tree"};
+    if (ImGui::Combo("Tree Type", &m_treeType, treeTypes, 4)) {
+        m_trees.setTreeType(m_treeType);
+        meshNeedsUpdate = true;
+    }
+
+    if (ImGui::SliderFloat("Branch Taper", &m_trees.branchTaper, 0.5f, 1.0f, "%.2f")) {
+        meshNeedsUpdate = true;
+    }
+    if (ImGui::SliderInt("Cylinder Sides", &m_trees.cylinderSides, 4, 12)) {
+        meshNeedsUpdate = true;
+    }
+    
+    // Placement parameters that don't affect mesh
+    bool placementNeedsUpdate = false;
+    
+    if (ImGui::SliderFloat("Min Scale", &m_trees.minTreeScale, 0.2f, 1.0f, "%.2f")) {
+        placementNeedsUpdate = true;
+    }
+    if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 3.0f, "%.2f")) {
+        placementNeedsUpdate = true;
+    }
+    if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {
+        placementNeedsUpdate = true;
+    }
+    
+    // Apply updates
+    if (meshNeedsUpdate) {
+        m_trees.markMeshDirty();
+        m_trees.regenerateOnTerrain(&m_model);
+    } else if (placementNeedsUpdate) {
+        m_trees.regenerateOnTerrain(&m_model);
+    }
 
 	// finish creating window
 	ImGui::End();

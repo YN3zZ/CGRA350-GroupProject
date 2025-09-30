@@ -1,0 +1,46 @@
+#pragma once
+
+#include "l_system.hpp"
+#include "perlin_noise.hpp"
+#include <glm/glm.hpp>
+#include <vector>
+
+class TreeGenerator {
+public:
+    // L-System parameters
+    LSystem lSystem;
+    int treeCount = 50;
+    float minTreeScale = 0.5f;
+    float maxTreeScale = 2.0f;
+    bool randomRotation = true;
+    float branchTaper = 0.8f;
+    int cylinderSides = 12;
+
+    // Rendering
+    GLuint shader = 0;
+    glm::vec3 color{0.4f, 0.3f, 0.2f}; // Brown color for trees
+
+    TreeGenerator() = default;
+    ~TreeGenerator();  // Need clean up OpenGL resources
+
+
+    void markMeshDirty() { needsMeshRegeneration = true; }
+    // Generate trees on terrain
+    void generateTreesOnTerrain(PerlinNoise* perlinNoise);
+    void regenerateOnTerrain(PerlinNoise* perlinNoise) {
+        generateTreesOnTerrain(perlinNoise);
+    }
+    void setTreeType(int type);
+    // Draw all trees
+    void draw(const glm::mat4& view, const glm::mat4& proj);
+    
+private:
+    cgra::gl_mesh treeMesh;
+    std::vector<glm::mat4> treeTransforms;
+    GLuint instanceVBO = 0;
+    bool needsMeshRegeneration = true;
+
+    void setupInstancing();
+    void updateInstanceBuffer();
+    void regenerateTreeMesh();
+};
