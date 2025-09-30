@@ -147,7 +147,8 @@ void Application::renderGUI() {
     
     if (ImGui::Button("Generate Terrain")) {
         meshNeedsUpdate = true;
-        m_model.generate();
+        m_model.createMesh();
+        m_model.setShaderParams();
     }
     
     ImGui::Separator();
