@@ -9,19 +9,26 @@ class TreeGenerator {
 public:
     // L-System parameters
     LSystem lSystem;
-    int treeCount = 50;
+    int treeCount = 15;
     float minTreeScale = 0.5f;
-    float maxTreeScale = 2.0f;
+    float maxTreeScale = 1.0f;
     bool randomRotation = true;
-    float branchTaper = 0.8f;
+    float branchTaper = 0.65f;
     int cylinderSides = 12;
 
     // Rendering
     GLuint shader = 0;
     glm::vec3 color{0.4f, 0.3f, 0.2f}; // Brown color for trees
 
+    // Textures
+    std::vector<GLuint> barkTextures;
+    bool useTextures = false;
+
     TreeGenerator() = default;
     ~TreeGenerator();  // Need clean up OpenGL resources
+
+    // Load bark textures
+    void loadTextures();
 
 
     void markMeshDirty() { needsMeshRegeneration = true; }
@@ -32,7 +39,7 @@ public:
     }
     void setTreeType(int type);
     // Draw all trees
-    void draw(const glm::mat4& view, const glm::mat4& proj);
+    void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDir = glm::vec3(0, -1, -1), const glm::vec3& viewPos = glm::vec3(0));
     
 private:
     cgra::gl_mesh treeMesh;
