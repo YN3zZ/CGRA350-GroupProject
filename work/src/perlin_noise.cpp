@@ -18,7 +18,7 @@ using namespace cgra;
 const vector<string> textureNames = { "sandyground1", "patchy-meadow1", "slatecliffrock" };
 
 // Initially generate the mesh and load the textures. Initialise shader and color immediately.
-PerlinNoise::PerlinNoise(GLuint shader) : shader(shader) {
+PerlinNoise::PerlinNoise() {
 	// Load all the textures using the path strings.
 	for (int i = 0; i < textureNames.size(); i++) {
 		string pathStart = CGRA_SRCDIR + string("/res/textures/") + textureNames[i];
@@ -27,9 +27,6 @@ PerlinNoise::PerlinNoise(GLuint shader) : shader(shader) {
 		textures.push_back(textureImage.uploadTexture());
 		normalMaps.push_back(normalImage.uploadTexture());
 	}
-
-	// Generate the mesh immediately. Remove if using empty constructor.
-	generate();
 }
 
 
@@ -37,6 +34,11 @@ PerlinNoise::PerlinNoise(GLuint shader) : shader(shader) {
 void PerlinNoise::generate() {
 	terrain = createMesh();
 	
+	// Set textures, normals, scale and height params.
+	setShaderParams();
+}
+
+void PerlinNoise::setShaderParams() {
 	// Only update uniforms for texture and textureSize when mesh is updated.
 	glUseProgram(shader);
 	int textureCount = textureNames.size();

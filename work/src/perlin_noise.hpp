@@ -10,7 +10,6 @@ class PerlinNoise {
 private:
 	float generateNoise(glm::vec2 pos);
 	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
-	cgra::gl_mesh createMesh();
 	glm::vec2 getHeightRange();
 	std::vector<cgra::mesh_vertex> vertices;
 	cgra::gl_mesh terrain;
@@ -40,9 +39,10 @@ public:
 	std::vector<GLuint> normalMaps;
 
 	// Constructor and public methods.
-	PerlinNoise(GLuint shader);
-	PerlinNoise() {}
+	PerlinNoise();
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();
+	void setShaderParams();
+	cgra::gl_mesh createMesh();
 	glm::vec3 sampleVertex(glm::vec2 position);
 };

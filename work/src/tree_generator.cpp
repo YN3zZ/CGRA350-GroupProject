@@ -26,7 +26,7 @@ void TreeGenerator::loadTextures() {
     };
 
     for (int i = 0; i < barkTexturePaths.size(); i++) {
-        string path = CGRA_SRCDIR + string("//res//textures//") + barkTexturePaths[i];
+        string path = CGRA_SRCDIR + string("/res/textures/") + barkTexturePaths[i];
         rgba_image textureImage = rgba_image(string(path));
         barkTextures.push_back(textureImage.uploadTexture());
     }
@@ -192,9 +192,9 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDi
         };
 
         for (int i = 0; i < barkTextures.size(); i++) {
-            glActiveTexture(GL_TEXTURE4 + i);
+            glActiveTexture(GL_TEXTURE8 + i);
             glBindTexture(GL_TEXTURE_2D, barkTextures[i]);
-            glUniform1i(glGetUniformLocation(shader, textureUniforms[i].c_str()), 4 + i);
+            glUniform1i(glGetUniformLocation(shader, textureUniforms[i].c_str()), 8 + i);
         }
     }
 
