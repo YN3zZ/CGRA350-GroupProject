@@ -225,8 +225,7 @@ float PerlinNoise::generatePerlinNoise(vec2 pos, const vector<vec2> &octaveOffse
 	}
 	// Normalise then scale by amplitude.
 	float normalizedHeight = noiseHeight / maxHeight;
-	float finalHeight = (normalizedHeight + 1.0f) * 0.5f * meshHeight; // Also map back to positive range.
-	return finalHeight;
+	return normalizedHeight * meshHeight;
 }
 
 
