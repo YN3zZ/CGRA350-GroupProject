@@ -41,16 +41,18 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
 	GLuint shader = sb.build();
 
-    shader_builder sb_instanced;
-    sb_instanced.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert_instanced.glsl"));
-    sb_instanced.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag_instanced.glsl"));
-    GLuint instanced_shader = sb_instanced.build();
+    // Build bark shader for trees with textures
+    shader_builder sb_bark;
+    sb_bark.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_vert_instanced.glsl"));
+    sb_bark.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_frag_instanced.glsl"));
+    GLuint bark_shader = sb_bark.build();
 
 	vec3 color = vec3(1);
 	m_model = PerlinNoise(shader, color);
 
-    // Initialize trees
-    m_trees.shader = instanced_shader;
+    // Initialize trees with bark shader
+    m_trees.shader = bark_shader;
+    m_trees.loadTextures();
     m_trees.generateTreesOnTerrain(&m_model);
 }
 
@@ -88,8 +90,13 @@ void Application::render() {
 
 	// draw the model
 	m_model.draw(view, proj);
-	// draw trees
-	m_trees.draw(view, proj);
+
+	// compute camera position from view matrix
+	mat4 invView = inverse(view);
+	vec3 viewPos = vec3(invView[3]);
+
+	// draw trees with lighting
+	m_trees.draw(view, proj, m_model.lightDirection, viewPos);
 }
 
 
