@@ -18,7 +18,6 @@ private:
 
 public:
 	GLuint shader = 0;
-	glm::vec3 color{ 1.0f };
 	glm::mat4 modelTransform{ 1.0f };
 
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
@@ -40,7 +39,7 @@ public:
 	std::vector<GLuint> textures;
 
 	// Constructor and public methods.
-	PerlinNoise(GLuint shader, glm::vec3 color);
+	PerlinNoise(GLuint shader);
 	PerlinNoise() {}
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();

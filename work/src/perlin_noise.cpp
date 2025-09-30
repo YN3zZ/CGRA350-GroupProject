@@ -18,7 +18,7 @@ using namespace cgra;
 const vector<string> texturePaths = { "sandyground1_Base_Color.png", "patchy-meadow1_albedo.png", "slatecliffrock-albedo.png" };
 
 // Initially generate the mesh and load the textures. Initialise shader and color immediately.
-PerlinNoise::PerlinNoise(GLuint shader, vec3 color) : shader(shader), color(color) {
+PerlinNoise::PerlinNoise(GLuint shader) : shader(shader) {
 	// Load all the textures using the path strings.
 	for (int i = 0; i < texturePaths.size(); i++) {
 		string path = CGRA_SRCDIR + string("//res//textures//") + texturePaths[i];
@@ -49,7 +49,6 @@ void PerlinNoise::generate() {
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
-	glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
 }
 
 
