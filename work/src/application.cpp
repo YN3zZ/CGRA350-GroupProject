@@ -36,19 +36,18 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 
 
 Application::Application(GLFWwindow *window) : m_window(window) {
-    shader_builder sb;
-    sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert.glsl"));
-    sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag.glsl"));
-    GLuint shader = sb.build();
+	shader_builder sb;
+    sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
+	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
+	GLuint shader = sb.build();
 
     shader_builder sb_instanced;
     sb_instanced.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_vert_instanced.glsl"));
     sb_instanced.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//color_frag_instanced.glsl"));
     GLuint instanced_shader = sb_instanced.build();
 
-    m_model = PerlinNoise();
-    m_model.shader = shader;
-    m_model.color = vec3(0.5f, 0.5f, 0.3f);
+	vec3 color = vec3(1);
+	m_model = PerlinNoise(shader, color);
     
     // Initialize trees
     m_trees.shader = instanced_shader;
@@ -74,7 +73,7 @@ void Application::render() {
 	glDepthFunc(GL_LESS);
 
 	// projection matrix
-	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 2500.f);
+	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 	// view matrix
 	mat4 view = translate(mat4(1), vec3(0, 0, -m_distance))
@@ -86,7 +85,6 @@ void Application::render() {
 	if (m_show_grid) drawGrid(view, proj);
 	if (m_show_axis) drawAxis(view, proj);
 	glPolygonMode(GL_FRONT_AND_BACK, (m_showWireframe) ? GL_LINE : GL_FILL);
-
 
 	// draw the model
 	m_model.draw(view, proj);
@@ -117,43 +115,23 @@ void Application::renderGUI() {
 
     ImGui::Separator();
     ImGui::Text("Terrain Generation");
+    
+	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
+	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f");
+	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
+	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
+	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
+	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
+	ImGui::Separator();
+	ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
+	ImGui::SliderFloat("Mesh Size", &m_model.meshScale, 0.1f, 500.0f, "%.1f", 4.0f);
+	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f");
+	ImGui::SliderFloat("Texture Size", &m_model.textureScale, 0.1f, 5.0f, "%.1f");
+	ImGui::Separator();
+	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
+	ImGui::SliderFloat("Light Angle", &m_model.lightDirection.x, -1.0f, 1.0f);
+	if (ImGui::Button("Generate Terrain")) m_model.generate();
 
-    // Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
-    if (ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f")) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f)) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f)) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f)) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f")) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    
-    ImGui::Separator();
-    
-    if (ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f)) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderFloat("Mesh Size", &m_model.meshSize, 0.1f, 500.0f, "%.1f", 4.0f)) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
-    if (ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f")) {
-        m_model.generate();
-        m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
-    }
     
     ImGui::Separator();
     ImGui::Text("L-System Trees");
@@ -213,9 +191,9 @@ void Application::renderGUI() {
     } else if (placementNeedsUpdate) {
         m_trees.regenerateOnTerrain(m_model.vertices, m_model.meshResolution, m_model.meshSize);
     }
-    
-    // finish creating window
-    ImGui::End();
+
+	// finish creating window
+	ImGui::End();
 }
 
 
