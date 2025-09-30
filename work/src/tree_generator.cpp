@@ -1,5 +1,6 @@
 // tree_generator.cpp
 #include "tree_generator.hpp"
+#include "perlin_noise.hpp"
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -79,37 +80,36 @@ void TreeGenerator::updateInstanceBuffer() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void TreeGenerator::generateTreesOnTerrain(const vector<mesh_vertex>& terrainVertices,
-                                           int meshResolution, float meshSize) {
+void TreeGenerator::generateTreesOnTerrain(PerlinNoise* perlinNoise) {
     // Clear only the transforms, not the mesh
     treeTransforms.clear();
-    
+
     // Mark that we need to regenerate the mesh if L-system parameters changed
     if (needsMeshRegeneration) {
         regenerateTreeMesh();
     }
-    
+
     // Random placement
     mt19937 rng(42);
+    float meshSize = perlinNoise->meshScale;
     uniform_real_distribution<float> positionDist(-meshSize * 0.8f, meshSize * 0.8f);
     uniform_real_distribution<float> scaleDist(minTreeScale, maxTreeScale);
     uniform_real_distribution<float> rotationDist(0.0f, 2.0f * pi<float>());
-    
+
     for (int i = 0; i < treeCount; i++) {
         vec2 position(positionDist(rng), positionDist(rng));
-        vec3 terrainPoint = sampleTerrainHeight(terrainVertices, meshResolution,
-                                                meshSize, position);
-        
+        vec3 terrainPoint = perlinNoise->sampleVertex(position);
+
         float scale = scaleDist(rng);
         float rotation = randomRotation ? rotationDist(rng) : 0.0f;
-        
+
         mat4 transform = translate(mat4(1.0f), terrainPoint) *
                         rotate(mat4(1.0f), rotation, vec3(0, 1, 0)) *
                         glm::scale(mat4(1.0f), vec3(scale));
-        
+
         treeTransforms.push_back(transform);
     }
-    
+
     // Set up instancing with the new transforms
     setupInstancing();
 }
@@ -167,16 +167,4 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj) {
                            0, 
                            treeTransforms.size());
     glBindVertexArray(0);
-}
-
-vec3 TreeGenerator::sampleTerrainHeight(const vector<mesh_vertex>& vertices,
-                                        int resolution, float size, vec2 position) {
-    float u = (position.x / size + 1.0f) * 0.5f;
-    float v = (position.y / size + 1.0f) * 0.5f;
-    
-    int i = std::clamp(int(u * (resolution - 1)), 0, resolution - 1);
-    int j = std::clamp(int(v * (resolution - 1)), 0, resolution - 1);
-    
-    int index = i * resolution + j;
-    return vertices[index].pos;
 }

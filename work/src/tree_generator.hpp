@@ -26,11 +26,9 @@ public:
 
     void markMeshDirty() { needsMeshRegeneration = true; }
     // Generate trees on terrain
-    void generateTreesOnTerrain(const std::vector<cgra::mesh_vertex>& terrainVertices, 
-        int meshResolution, float meshSize);
-    void regenerateOnTerrain(const std::vector<cgra::mesh_vertex>& terrainVertices,
-        int meshResolution, float meshSize) {
-        generateTreesOnTerrain(terrainVertices, meshResolution, meshSize);
+    void generateTreesOnTerrain(PerlinNoise* perlinNoise);
+    void regenerateOnTerrain(PerlinNoise* perlinNoise) {
+        generateTreesOnTerrain(perlinNoise);
     }
     void setTreeType(int type);
     // Draw all trees
@@ -42,8 +40,6 @@ private:
     GLuint instanceVBO = 0;
     bool needsMeshRegeneration = true;
 
-    glm::vec3 sampleTerrainHeight(const std::vector<cgra::mesh_vertex>& vertices,
-                                  int resolution, float size, glm::vec2 position);
     void setupInstancing();
     void updateInstanceBuffer();
     void regenerateTreeMesh();
