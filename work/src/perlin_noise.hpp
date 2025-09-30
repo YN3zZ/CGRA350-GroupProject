@@ -43,6 +43,6 @@ public:
 	void draw(const glm::mat4& view, const glm::mat4& proj);
 	void generate();
 	void setShaderParams();
-	cgra::gl_mesh createMesh();
+	void createMesh();
 	glm::vec3 sampleVertex(glm::vec2 position);
 };
