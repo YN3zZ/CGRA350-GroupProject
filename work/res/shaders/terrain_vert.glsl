@@ -3,30 +3,52 @@
 // uniform data
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
-uniform vec3 uColor;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
 
-// model data (this must match the input of the vertex shader)
+// model data (this must match the input of the fragment shader)
 out VertexData {
-	vec3 globalPos;
+	float globalHeight;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
+    vec3 tangent; // "Tangent vectors" required for normal mapping.
+    vec3 bitangent; // Part of TBN matrix structure mentioned in lecture.
 } v_out;
 
 void main() {
-	// Remember global position before modelView transformation for texture mapping.
-	v_out.globalPos = aPosition;
+	// Send untransformed global y position for texture mapping based on height proportion.
+	v_out.globalHeight = aPosition.y;
+    // Normalized version for calculating tangents.
+    vec3 normWorldPos = normalize(aPosition);
 
 	// transform vertex data to viewspace
 	v_out.position = (uModelViewMatrix * vec4(aPosition, 1)).xyz;
 	v_out.normal = normalize((uModelViewMatrix * vec4(aNormal, 0)).xyz);
 	v_out.textureCoord = aTexCoord;
 
-	// set the screenspace position (needed for converting to fragment data)
-	gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1);
+    // Lecture: "tangent vectors for Sphere object can be easily calculated"
+    vec3 tangent;
+    if (abs(worldPos.y) < 0.999) {
+        // tangent in longitude direction
+        tangent = normalize(vec3(-worldPos.z, 0.0, worldPos.x));
+    }
+    else {
+        // at poles, avoid singularity
+        tangent = vec3(1.0, 0.0, 0.0);
+    }
+
+    // Lecture: need proper orthogonal basis for TBN matrix
+    tangent = normalize(tangent - dot(tangent, aNormal) * aNormal);
+    vec3 bitangent = cross(aNormal, tangent);
+
+    // lecture: "Consider using a (tangent, bitangent and normal) TBN matrix structure for transformations"
+    v_out.tangent = normalize((uModelViewMatrix * vec4(tangent, 0.0)).xyz);
+    v_out.bitangent = normalize((uModelViewMatrix * vec4(bitangent, 0.0)).xyz);
+
+    // Set the screenspace position (needed for converting to fragment data)
+    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0f);
 }
