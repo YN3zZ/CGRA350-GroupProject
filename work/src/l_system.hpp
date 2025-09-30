@@ -20,7 +20,7 @@ public:
     std::map<char, std::string> rules;
     int iterations = 3;
     float angle = 25.0f; // degrees
-    float stepLength = 1.0f;
+    float stepLength = 0.86f;
     float branchTaper = 0.98f;
     int cylinderSides = 8;
     
