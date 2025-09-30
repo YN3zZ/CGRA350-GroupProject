@@ -26,7 +26,7 @@ public:
 	int noiseOctaves = 4; // Higher octaves add finer details.
 	float meshHeight = 2.5f; // Overall height.
 	float meshScale = 5.0f; // Overall size of mesh.
-	int meshResolution = 100; // Square this to get total vertices.
+	int meshResolution = 25; // Square this to get total vertices.
 	float textureScale = 1.0f; // Size of texture.
 
 	// Lighting params.

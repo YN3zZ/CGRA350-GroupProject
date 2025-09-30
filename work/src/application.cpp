@@ -194,7 +194,7 @@ void Application::renderGUI() {
     if (ImGui::SliderFloat("Min Scale", &m_trees.minTreeScale, 0.2f, 1.0f, "%.2f")) {
         placementNeedsUpdate = true;
     }
-    if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 3.0f, "%.2f")) {
+    if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 6.0f, "%.2f")) {
         placementNeedsUpdate = true;
     }
     if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {

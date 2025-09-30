@@ -31,7 +31,7 @@ void main() {
 	v_out.textureCoord = aTexCoord;
 
     // Tangent on the x-axis for grid-based heightmap terrain.
-    vec3 tangent = vec3(1.0, 0.0, 0.0);
+    vec3 tangent = vec3(1.0f, 0.0f, 0.0f);
 
     // Lecture: need proper orthogonal basis for TBN matrix
     tangent = normalize(tangent - dot(tangent, aNormal) * aNormal);

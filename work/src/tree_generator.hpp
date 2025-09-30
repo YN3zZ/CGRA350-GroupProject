@@ -9,7 +9,7 @@ class TreeGenerator {
 public:
     // L-System parameters
     LSystem lSystem;
-    int treeCount = 15;
+    int treeCount = 5;
     float minTreeScale = 0.5f;
     float maxTreeScale = 1.0f;
     bool randomRotation = true;
