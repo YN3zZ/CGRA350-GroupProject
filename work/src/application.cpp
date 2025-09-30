@@ -53,6 +53,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Initialize trees with bark shader
     m_trees.shader = bark_shader;
     m_trees.loadTextures();
+    m_trees.setTreeType(3);
     m_trees.generateTreesOnTerrain(&m_model);
 }
 
