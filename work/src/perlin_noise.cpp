@@ -30,14 +30,7 @@ PerlinNoise::PerlinNoise() {
 }
 
 
-// Generate the terrain mesh when UI parameters are changed instead of every frame.
-void PerlinNoise::generate() {
-	terrain = createMesh();
-	
-	// Set textures, normals, scale and height params.
-	setShaderParams();
-}
-
+// Set textures, normals, scale and height params.
 void PerlinNoise::setShaderParams() {
 	// Only update uniforms for texture and textureSize when mesh is updated.
 	glUseProgram(shader);
@@ -102,7 +95,8 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 }
 
 
-gl_mesh PerlinNoise::createMesh() {
+// Create terrain mesh using perlin noise heightmap.
+void PerlinNoise::createMesh() {
 	// Randomiser based on the user-controlled seed.
 	mt19937 randomiser(noiseSeed);
 	uniform_int_distribution<int> distribution(0, 10000); // Min to max.
@@ -179,8 +173,8 @@ gl_mesh PerlinNoise::createMesh() {
 			index += 6;
 		}
 	}
-	// Build and return gl_mesh.
-	return mb.build();
+	// Build and set gl_mesh.
+	terrain = mb.build();
 }
 
 
