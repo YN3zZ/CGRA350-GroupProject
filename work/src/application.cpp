@@ -130,8 +130,13 @@ void Application::renderGUI() {
 	ImGui::Separator();
 	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
 	ImGui::SliderFloat("Light Angle", &m_model.lightDirection.x, -1.0f, 1.0f);
-	if (ImGui::Button("Generate Terrain")) m_model.generate();
-
+    // L-System parameters that affect mesh generation
+    bool meshNeedsUpdate = false;
+    
+    if (ImGui::Button("Generate Terrain")) {
+        meshNeedsUpdate = true;
+        m_model.generate();
+    }
     
     ImGui::Separator();
     ImGui::Text("L-System Trees");
@@ -144,8 +149,7 @@ void Application::renderGUI() {
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
-    // L-System parameters that affect mesh generation
-    bool meshNeedsUpdate = false;
+    
     
     if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
         meshNeedsUpdate = true;
