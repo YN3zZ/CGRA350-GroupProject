@@ -32,9 +32,9 @@ public:
 	float textureScale = 1.0f; // Size of texture.
 
 	// Lighting params.
-	glm::vec3 lightDirection{ 0.0f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
+	glm::vec3 lightDirection{ 0.2f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
 	glm::vec3 lightColor{ 1.0f };
-	float roughness = 0.6f;
+	float roughness = 0.4f;
 	float metallic = 0.05f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = false;
 	std::vector<GLuint> textures;
