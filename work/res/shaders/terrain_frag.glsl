@@ -3,7 +3,6 @@
 // uniform data
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
-uniform vec3 uColor;
 // User controlled uniforms.
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
@@ -13,15 +12,19 @@ uniform bool useOrenNayar;
 // Texture mapping.
 uniform vec2 heightRange;
 uniform float textureScale;
-uniform sampler2D textures[8]; // Up to 8 textures.
-uniform int numTextures; // How many have been set.
+uniform sampler2D uTextures[8]; // Up to 8 textures.
+uniform sampler2D uNormalMaps[8]; // Up to 8 normals.
+uniform int numTextures; // How many have been set out of 8.
+
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
-	vec3 globalPos;
+	float globalHeight;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
+	vec3 tangent; // Tangent and bitangent for normal mapping.
+	vec3 bitangent;
 } f_in;
 
 // framebuffer output
@@ -67,32 +70,51 @@ float orenNayarDiffuse(vec3 normDir, vec3 lightDir, vec3 viewDir) {
 }
 
 
+vec3 calculateNormal(vec3 normalMap) {
+	// Map normal map to [-1, 1] range in tangent space.
+	vec3 normalTangentSpace = normalize(normalMap * 2.0 - 1.0);
+
+	// Build TBN matrix to transform from tangent space to view space.
+	vec3 T = normalize(f_in.tangent);
+	vec3 B = normalize(f_in.bitangent);
+	vec3 N = normalize(f_in.normal);
+	mat3 TBN = mat3(T, B, N);
+
+	// Transform the normal from tangent space to view space
+	vec3 perturbedNormal = normalize(TBN * normalTangentSpace);
+	return perturbedNormal;
+}
+
+
 void main() {
 	// Getting height proportion to map texture color based on terrain height.
 	float minHeight = heightRange.x;
 	float maxHeight = heightRange.y;
-	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalPos.y);
+	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalHeight);
 	vec2 uv = f_in.textureCoord * textureScale;
 	
 	// Scale height to the texture array.
 	float scaledHeight = heightProportion * numTextures;
-	// Combine the textures to an overall color based on height.
-	vec3 textureColor = vec3(0.0);
-	float totalWeight = 0.0;
+	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
+	vec3 textureColor = vec3(0.0f);
+	vec3 normalMap = vec3(0.0f);
+	float totalWeight = 0.0f;
 	for (int i = 0; i < numTextures; i++) {
 		// Weight for how close the current height is to the middle of the textures band.
 		float weight = max(1.0 - abs(scaledHeight - i - 0.5f), 0.0f);
-		textureColor += texture(textures[i], uv).rgb * weight;
+		textureColor += texture(uTextures[i], uv).rgb * weight;
+		normalMap += texture(uNormalMaps[i], uv).rgb * weight;
 		totalWeight += weight;
 	}
 	// Normalize so the sum of contributions is 1 (solid texture to avoid light/dark patches).
 	textureColor /= totalWeight;
+	normalMap /= totalWeight;
 
 
 	float ambientStrength = 0.1f;
 	vec3 ambient = ambientStrength * lightColor * textureColor;
 
-	vec3 normDir = normalize(f_in.normal);
+	vec3 normDir = calculateNormal(normalMap);
 	vec3 viewDir = normalize(-f_in.position);
 	vec3 lightDir = normalize(-lightDirection);
 	vec3 halfAngle = normalize(lightDir + viewDir);

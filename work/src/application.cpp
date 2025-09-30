@@ -36,25 +36,24 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 
 
 Application::Application(GLFWwindow *window) : m_window(window) {
-	shader_builder sb;
-    sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
+  shader_builder sb;
+  sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
 	GLuint shader = sb.build();
+  
+  // Build bark shader for trees with textures
+  shader_builder sb_bark;
+  sb_bark.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_vert_instanced.glsl"));
+  sb_bark.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_frag_instanced.glsl"));
+  GLuint bark_shader = sb_bark.build();
 
-    // Build bark shader for trees with textures
-    shader_builder sb_bark;
-    sb_bark.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_vert_instanced.glsl"));
-    sb_bark.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_frag_instanced.glsl"));
-    GLuint bark_shader = sb_bark.build();
+	m_model = PerlinNoise(shader);
 
-	vec3 color = vec3(1);
-	m_model = PerlinNoise(shader, color);
-
-    // Initialize trees with bark shader
-    m_trees.shader = bark_shader;
-    m_trees.loadTextures();
-    m_trees.setTreeType(3);
-    m_trees.generateTreesOnTerrain(&m_model);
+  // Initialize trees with bark shader
+  m_trees.shader = bark_shader;
+  m_trees.loadTextures();
+  m_trees.setTreeType(3);
+  m_trees.generateTreesOnTerrain(&m_model);
 }
 
 
