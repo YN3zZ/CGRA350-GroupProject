@@ -9,6 +9,7 @@
 #include "opengl.hpp"
 #include "cgra/cgra_mesh.hpp"
 #include "perlin_noise.hpp"
+#include "tree_generator.hpp"
 
 
 // Basic model that holds the shader, mesh and transform for drawing.
@@ -49,7 +50,10 @@ private:
 
 	// geometry
 	PerlinNoise m_model;
+	TreeGenerator m_trees;
+	int m_treeType = 0;
 
+	
 public:
 	// setup
 	Application(GLFWwindow *);
