@@ -12,6 +12,7 @@ uniform bool useOrenNayar;
 // Texture mapping.
 uniform float textureScale;
 uniform float alpha;
+uniform float uTime;
 // A single texture and normal map for now.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
@@ -88,6 +89,14 @@ vec3 calculateNormal(vec3 normalMap) {
 
 void main() {
 	vec2 uv = f_in.textureCoord * textureScale;
+
+	// Texture wave animation.
+	float frequency = 3.0f;
+	float amplitude = 0.1f;
+	float speed = 0.6f;
+	// Y has waves while X is scrolling. Gives the appeearance of moving water.
+	uv.y += sin(uv.x * frequency + uTime * speed) * amplitude;
+	uv.x += uTime * amplitude * speed;
 	
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
 	vec3 textureColor = texture(uTexture, uv).rgb;
