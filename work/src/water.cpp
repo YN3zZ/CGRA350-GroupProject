@@ -16,6 +16,7 @@ using namespace cgra;
 
 // Initially generate the mesh and load the textures. Initialise shader and color separately.
 Water::Water() {
+	// Enable tranparency, so the water can use alpha channel.
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -62,6 +63,7 @@ void Water::draw(const mat4& view, const mat4& proj, vec3 lightDirection, vec3 l
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+	glUniform1f(glGetUniformLocation(shader, "alpha"), waterAlpha);
 
 	// Draw the terrain mesh.
 	waterMesh.draw();
