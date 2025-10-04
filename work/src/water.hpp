@@ -19,7 +19,7 @@ public:
 	float waterHeight = 0.0f; // Height of water level.
 	float textureScale = 0.02f; // Size of texture.
 	float meshScale = 5.0f; // Overall size of mesh. Matches size of terrain.
-	int meshResolution = 25; // Square this to get total vertices.
+	int meshResolution = 50; // Square this to get total vertices.
 	float waterAlpha = 0.85f;
 
 	float roughness = 0.02f;
