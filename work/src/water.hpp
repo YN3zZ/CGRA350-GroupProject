@@ -15,14 +15,15 @@ private:
 public:
 	GLuint shader = 0;
 	glm::mat4 modelTransform{ 1.0f };
-	float waterHeight = 0.05f; // Height of water level.
+	float waterHeight = 0.0f; // Height of water level.
 	float textureScale = 0.02f; // Size of texture.
 	float meshScale = 5.0f; // Overall size of mesh. Matches size of terrain.
 	int meshResolution = 25; // Square this to get total vertices.
+	float waterAlpha = 0.85f;
 
-	float roughness = 0.04f;
-	float metallic = 0.05f; // 0 = normal, 1 = metal.
-	bool useOrenNayar = false;
+	float roughness = 0.02f;
+	float metallic = 0.15f; // 0 = normal, 1 = metal.
+	bool useOrenNayar = true;
 
 	// Constructor and public methods.
 	Water();

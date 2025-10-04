@@ -73,6 +73,17 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Set terrain and water texture params after trees are generated to prevent visual bugs.
     m_terrain.setShaderParams();
     m_water.setShaderParams();
+
+    // Change UI Style
+    ImGuiStyle &style = ImGui::GetStyle();
+    // Red button, white text, red background
+    style.Colors[ImGuiCol_Button] = ImVec4(0.9f, 0.1f, 0.37f, 1.0f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.65f, 0.25f, 0.37f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.3f, 0.2f, 0.2f, 1.0f);
+    // Window title bar
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
 }
 
 
@@ -125,7 +136,7 @@ void Application::render() {
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(350, 600), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(350, 800), ImGuiSetCond_Once); // (width, height)
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
@@ -163,12 +174,17 @@ void Application::renderGUI() {
 	ImGui::SliderFloat("Light Angle", &m_terrain.lightDirection.x, -1.0f, 1.0f);
     // L-System parameters that affect mesh generation
     bool meshNeedsUpdate = false;
+
+    ImGui::Text("Water Parameters");
+    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -10.0f, 10.0f);
+    ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
     
-    if (ImGui::Button("Generate Terrain")) {
+    // Generates the mesh and shaders for terrain and water.
+    if (ImGui::Button("Generate")) {
         meshNeedsUpdate = true;
         m_terrain.createMesh();
-        m_water.createMesh();
         m_terrain.setShaderParams();
+        m_water.createMesh();
         m_water.setShaderParams();
     }
     
