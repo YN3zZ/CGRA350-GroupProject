@@ -22,8 +22,6 @@ out VertexData {
 void main() {
 	// Send untransformed global y position for texture mapping based on height proportion.
 	v_out.globalHeight = aPosition.y;
-    // Normalized version for calculating tangents.
-    vec3 normWorldPos = normalize(aPosition);
 
 	// transform vertex data to viewspace
 	v_out.position = (uModelViewMatrix * vec4(aPosition, 1)).xyz;
