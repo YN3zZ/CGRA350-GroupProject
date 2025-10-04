@@ -11,6 +11,7 @@ private:
 	cgra::gl_mesh waterMesh;
 	GLuint texture;
 	GLuint normalMap;
+	float startTime;
 
 public:
 	GLuint shader = 0;
