@@ -26,23 +26,29 @@ void main() {
 	v_out.globalHeight = aPosition.y;
 
     // Wave displacement animation
-    float frequency = 60.0f;
+    float frequency = 80.0f;
     float amplitude = 0.03f;
-    float speed = 0.5f;
+    float speed = 0.6f;
     float displacement = (sin(uv.x * frequency + uTime * speed) + cos(uv.y * frequency/2.0f + uTime * speed)) * amplitude;
     vec3 newPosition = aPosition + vec3(0, displacement, 0);
 
+    // Get nearby gradient to recalculate normals.
+    float delta = 0.0001f;
+    float gradX = sin((uv.x + delta) * frequency + uTime * speed) - sin((uv.x - delta) * frequency + uTime * speed);
+    float gradY = cos((uv.y + delta) * frequency / 2.0f + uTime * speed) - cos((uv.y - delta) * frequency / 2.0f + uTime * speed);
+    vec3 newNormal = normalize(vec3(-gradX, 1.0f, -gradY));
+
 	// transform vertex data to viewspace
 	v_out.position = (uModelViewMatrix * vec4(newPosition, 1)).xyz;
-	v_out.normal = normalize((uModelViewMatrix * vec4(aNormal, 0)).xyz);
+	v_out.normal = normalize((uModelViewMatrix * vec4(newNormal, 0)).xyz);
 	v_out.textureCoord = uv;
 
     // Tangent on the x-axis for grid-based heightmap terrain.
     vec3 tangent = vec3(1.0f, 0.0f, 0.0f);
 
     // Lecture: need proper orthogonal basis for TBN matrix
-    tangent = normalize(tangent - dot(tangent, aNormal) * aNormal);
-    vec3 bitangent = cross(aNormal, tangent);
+    tangent = normalize(tangent - dot(tangent, newNormal) * newNormal);
+    vec3 bitangent = cross(newNormal, tangent);
 
     // lecture: "Consider using a (tangent, bitangent and normal) TBN matrix structure for transformations"
     v_out.tangent = normalize((uModelViewMatrix * vec4(tangent, 0.0)).xyz);
