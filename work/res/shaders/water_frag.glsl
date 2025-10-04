@@ -12,6 +12,7 @@ uniform bool useOrenNayar;
 // Texture mapping.
 uniform float textureScale;
 uniform float alpha;
+// Current time for animating waves texture.
 uniform float uTime;
 // A single texture and normal map for now.
 uniform sampler2D uTexture;
@@ -90,7 +91,7 @@ vec3 calculateNormal(vec3 normalMap) {
 void main() {
 	vec2 uv = f_in.textureCoord * textureScale;
 
-	// Texture wave animation.
+	// Texture wave animation. Might make these controllable in UI.
 	float frequency = 3.0f;
 	float amplitude = 0.1f;
 	float speed = 0.6f;
