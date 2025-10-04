@@ -25,6 +25,9 @@ Water::Water() {
 	rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
 	texture = textureImage.uploadTexture();
 	normalMap = normalImage.uploadTexture();
+
+	// Get starting time for animations to base off.
+	startTime = (float)glfwGetTime();
 }
 
 
@@ -64,6 +67,9 @@ void Water::draw(const mat4& view, const mat4& proj, vec3 lightDirection, vec3 l
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
 	glUniform1f(glGetUniformLocation(shader, "alpha"), waterAlpha);
+	
+	float currentTime = (float)glfwGetTime() - startTime;
+	glUniform1f(glGetUniformLocation(shader, "uTime"), currentTime);
 
 	// Draw the terrain mesh.
 	waterMesh.draw();
