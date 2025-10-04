@@ -13,6 +13,8 @@ private:
 	glm::vec2 getHeightRange();
 	std::vector<cgra::mesh_vertex> vertices;
 	cgra::gl_mesh terrain;
+	std::vector<GLuint> textures;
+	std::vector<GLuint> normalMaps;
 
 
 public:
@@ -35,8 +37,6 @@ public:
 	float roughness = 0.4f;
 	float metallic = 0.05f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = false;
-	std::vector<GLuint> textures;
-	std::vector<GLuint> normalMaps;
 
 	// Constructor and public methods.
 	PerlinNoise();
