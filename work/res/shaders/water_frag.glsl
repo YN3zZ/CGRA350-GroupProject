@@ -10,8 +10,8 @@ uniform float roughness;
 uniform float metallic;
 uniform bool useOrenNayar;
 // Texture mapping.
-uniform vec2 heightRange;
 uniform float textureScale;
+uniform float alpha;
 // A single texture and normal map for now.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
@@ -87,10 +87,6 @@ vec3 calculateNormal(vec3 normalMap) {
 
 
 void main() {
-	// Getting height proportion to map texture color based on terrain height.
-	float minHeight = heightRange.x;
-	float maxHeight = heightRange.y;
-	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalHeight);
 	vec2 uv = f_in.textureCoord * textureScale;
 	
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
@@ -154,6 +150,5 @@ void main() {
 	vec3 finalColor = ambient + diffuse + specular;
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
-	float alpha = 0.8f;
 	fb_color = vec4(finalColor, alpha);
 }
