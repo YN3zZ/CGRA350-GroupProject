@@ -17,7 +17,7 @@ using namespace cgra;
 
 const vector<string> textureNames = { "sandyground1", "patchy-meadow1", "slatecliffrock" };
 
-// Initially generate the mesh and load the textures. Initialise shader and color immediately.
+// Initially generate the mesh and load the textures. Initialise shader and color separately.
 PerlinNoise::PerlinNoise() {
 	// Load all the textures using the path strings.
 	for (int i = 0; i < textureNames.size(); i++) {
