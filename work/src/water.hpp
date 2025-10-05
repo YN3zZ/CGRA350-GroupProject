@@ -17,10 +17,11 @@ public:
 	GLuint shader = 0;
 	glm::mat4 modelTransform{ 1.0f };
 	float waterHeight = -0.4f; // Height of water level.
-	float textureScale = 0.10f; // Size of texture.
+	float textureScale = 0.80f; // Size of texture.
 	float meshScale = 10.0f; // Overall size of mesh. Matches size of terrain.
 	int meshResolution = 100; // Square this to get total vertices.
 	float waterAlpha = 0.8f;
+	float waterSpeed = 0.6f;
 
 	float roughness = 0.02f;
 	float metallic = 0.25f; // 0 = normal, 1 = metal.
