@@ -55,7 +55,12 @@ private:
 	Water m_water;
 	int m_treeType = 3;
 
-	
+	// skybox
+	GLuint skyboxShader = 0;
+	GLuint skyboxTexture = 0;
+	cgra::gl_mesh skyboxMesh;
+
+
 public:
 	// setup
 	Application(GLFWwindow *);
