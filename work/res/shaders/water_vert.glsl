@@ -12,7 +12,7 @@ layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 uv;
 
 // model data (this must match the input of the fragment shader)
-out VertexData {
+out VertexData{
     float displacement;
 	vec3 position;
 	vec3 normal;
@@ -23,17 +23,18 @@ out VertexData {
 
 void main() {
     // Wave displacement animation
-    float frequency = 50.0f;
-    float amplitude = 0.04f; // Make this scale by mesh size.
-    float speed = 0.8f;
+    float frequency = 120.0f;
+    float amplitude = 0.01f; // Make this scale by mesh size.
+    float speed = 2.2f;
     float displacement = sin(cos(sin(uv.x)) * frequency + uTime * speed) + cos(cos(uv.y) * frequency/2.0f + uTime * speed);
     vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
+    // Store displacement and for depth coloring.
     v_out.displacement = displacement;
 
     // Get nearby gradient to recalculate normals (central difference derivative).
     float delta = 0.0001f;
-    float gradX = sin((uv.x + delta) * frequency + uTime * speed) - sin((uv.x - delta) * frequency + uTime * speed);
-    float gradY = cos((uv.y + delta) * frequency/2.0f + uTime * speed) - cos((uv.y - delta) * frequency/2.0f + uTime * speed);
+    float gradX = sin(cos(sin(uv.x + delta)) * frequency + uTime * speed) - sin(cos(sin(uv.x - delta)) * frequency + uTime * speed);
+    float gradY = cos(cos(uv.y + delta) * frequency/2.0f + uTime * speed) - cos(cos(uv.y - delta) * frequency/2.0f + uTime * speed);
     vec3 newNormal = normalize(vec3(-gradX, 1.0f, -gradY));
 
 	// transform vertex data to viewspace

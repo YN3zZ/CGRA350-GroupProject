@@ -46,14 +46,15 @@ void Water::setShaderParams() {
 	glBindTexture(GL_TEXTURE_2D, normalMap);
 	glUniform1i(glGetUniformLocation(shader, "uNormalMap"), i);
 
-	glUniform1f(glGetUniformLocation(shader, "textureScale"), 1.0f / (5.0f * textureScale));
+	glUniform1f(glGetUniformLocation(shader, "textureScale"), 1.0f / textureScale);
+	glUniform1f(glGetUniformLocation(shader, "meshScale"), meshScale);
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform1f(glGetUniformLocation(shader, "height"), waterHeight);
 }
 
 
-void Water::draw(const mat4& view, const mat4& proj, vec3 lightDirection, vec3 lightColor) {
+void Water::draw(const mat4& view, const mat4& proj, const vec3& lightDirection, const vec3& lightColor) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.

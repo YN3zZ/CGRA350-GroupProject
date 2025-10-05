@@ -121,18 +121,14 @@ void Application::render() {
 	// draw the model
 	m_terrain.draw(view, proj);
 
-	// compute camera position from view matrix
-	mat4 invView = inverse(view);
-	vec3 viewPos = vec3(invView[3]);
-
 	// Draw trees with lighting from terrain.
-	m_trees.draw(view, proj, m_terrain.lightDirection, viewPos);
+	m_trees.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
     
     // Draw water with lighting from terrain.
     m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
 }
 
-
+float test = 0.0f;
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
@@ -187,19 +183,23 @@ void Application::renderGUI() {
         m_water.createMesh();
         m_water.setShaderParams();
     }
-    
-    ImGui::Separator();
-    ImGui::Text("L-System Trees");
-    
-    // Tree placement parameters
-    if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
-        m_trees.regenerateOnTerrain(&m_terrain);
+
+
+    // TODO DELETE
+    if (ImGui::SliderFloat("Test", &test, 0.0f, 5.0f)) {
+        glUseProgram(m_water.shader);
+        glUniform1f(glGetUniformLocation(m_water.shader, "test"), test);
     }
+
+
     
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
-    
+    // Tree placement parameters
+    if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 0, 200)) {
+        m_trees.regenerateOnTerrain(&m_terrain);
+    }
     
     if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
         meshNeedsUpdate = true;

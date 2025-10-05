@@ -157,7 +157,7 @@ void TreeGenerator::setTreeType(int type) {
     needsMeshRegeneration = true;
 }
 
-void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& viewPos) {
+void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& lightColor) {
     if (treeTransforms.empty()) return;
 
     // Ensure mesh is generated
@@ -176,7 +176,12 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDi
     // Set color uniform
     glUniform3fv(glGetUniformLocation(shader, "uColor"), 1, value_ptr(color));
 
+    // compute camera position from view matrix
+    mat4 invView = inverse(view);
+    vec3 viewPos = vec3(invView[3]);
+
     // Set lighting uniforms
+    glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
     glUniform3fv(glGetUniformLocation(shader, "uLightDir"), 1, value_ptr(lightDir));
     glUniform3fv(glGetUniformLocation(shader, "uViewPos"), 1, value_ptr(viewPos));
 
