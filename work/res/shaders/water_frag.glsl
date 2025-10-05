@@ -11,14 +11,14 @@ uniform float metallic;
 uniform bool useOrenNayar;
 // Texture mapping.
 uniform float textureScale;
+uniform float meshScale;
 uniform float alpha;
 // Current time for animating waves texture.
 uniform float uTime;
-// A single texture and normal map for now.
+uniform float waterSpeed;
+// A single texture and normal map.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
-
-uniform float test; // TODO DELETE
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -97,12 +97,13 @@ void main() {
 	vec2 uv = f_in.textureCoord * textureScale;
 
 	// Texture wave animation. Might make these controllable in UI.
-	float frequency = 3.0f;
-	float amplitude = 0.1f;
-	float speed = 0.6f;
-	// Y has waves while X is scrolling. Gives the appeearance of moving water.
-	uv.y += sin(uv.x * frequency + uTime * speed) * amplitude;
-	uv.x += uTime * amplitude * speed;
+	float frequency = 1.0f;
+	float amplitude = meshScale / 250.0f;
+	// Both UV x and y have waves. Some scrolling is added to make it move around. Gives the appeearance of moving water.
+	float scrollAmount = uTime * waterSpeed;
+	vec2 oldUV = uv.xy;
+	uv.y += sin(cos(oldUV.x) * frequency + uTime * waterSpeed) * amplitude + scrollAmount/2;
+	uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;
 	
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
 	vec3 textureColor = texture(uTexture, uv).rgb;
