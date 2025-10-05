@@ -176,7 +176,7 @@ void Application::renderGUI() {
     bool meshNeedsUpdate = false;
 
     ImGui::Text("Water Parameters");
-    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -10.0f, 10.0f);
+    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
     
     // Generates the mesh and shaders for terrain and water.

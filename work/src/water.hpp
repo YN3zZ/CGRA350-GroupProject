@@ -20,9 +20,9 @@ public:
 	float textureScale = 0.02f; // Size of texture.
 	float meshScale = 5.0f; // Overall size of mesh. Matches size of terrain.
 	int meshResolution = 50; // Square this to get total vertices.
-	float waterAlpha = 0.85f;
+	float waterAlpha = 0.8f;
 
-	float roughness = 0.02f;
+	float roughness = 0.01f;
 	float metallic = 0.15f; // 0 = normal, 1 = metal.
 	bool useOrenNayar = true;
 
