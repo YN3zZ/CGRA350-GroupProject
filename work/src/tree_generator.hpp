@@ -39,7 +39,7 @@ public:
     }
     void setTreeType(int type);
     // Draw all trees
-    void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDir = glm::vec3(0, -1, -1), const glm::vec3& viewPos = glm::vec3(0));
+    void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDir = glm::vec3(0, -1, -1), const glm::vec3& lightColor = glm::vec3(1));
     
 private:
     cgra::gl_mesh treeMesh;

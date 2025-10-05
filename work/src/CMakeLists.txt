@@ -7,7 +7,7 @@ list(APPEND sources
 )
 
 # Add executable target and link libraries
-add_executable(${CGRA_PROJECT} ${sources})
+add_executable(${CGRA_PROJECT} ${sources} "water.cpp")
 
 # ----TODO--------------------- #
 # list your subdirectories here #

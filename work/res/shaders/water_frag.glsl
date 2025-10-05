@@ -6,20 +6,24 @@ uniform mat4 uModelViewMatrix;
 // User controlled uniforms.
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
-uniform float roughness; // 0=smoothest, 1=roughest. We avoid 0 or 1 (division by 0 error).
-uniform float metallic; // 0=normal, 1=most metallic.
+uniform float roughness;
+uniform float metallic;
 uniform bool useOrenNayar;
 // Texture mapping.
-uniform vec2 heightRange;
 uniform float textureScale;
-uniform sampler2D uTextures[8]; // Up to 8 textures.
-uniform sampler2D uNormalMaps[8]; // Up to 8 normals.
-uniform int numTextures; // How many have been set out of 8.
+uniform float meshScale;
+uniform float alpha;
+// Current time for animating waves texture.
+uniform float uTime;
+uniform float waterSpeed;
+// A single texture and normal map.
+uniform sampler2D uTexture;
+uniform sampler2D uNormalMap;
 
 
 // viewspace data (this must match the output of the fragment shader)
-in VertexData {
-	float globalHeight;
+in VertexData{
+	float displacement;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
@@ -87,32 +91,31 @@ vec3 calculateNormal(vec3 normalMap) {
 
 
 void main() {
-	// Getting height proportion to map texture color based on terrain height.
-	float minHeight = heightRange.x;
-	float maxHeight = heightRange.y;
-	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalHeight);
+	// Sky color. May make controllable later.
+	vec3 skyColor = vec3(0.5f, 0.65f, 0.8f);
+
 	vec2 uv = f_in.textureCoord * textureScale;
+
+	// Texture wave animation. Might make these controllable in UI.
+	float frequency = 1.0f;
+	float amplitude = 0.05f - meshScale / 15000.0f;
+	// Both UV x and y have waves. Some scrolling is added to make it move around. Gives the appeearance of moving water.
+	float scrollAmount = uTime * waterSpeed * 0.01f;
+	vec2 oldUV = uv.xy;
+	uv.y += sin(cos(oldUV.x) * frequency + uTime * waterSpeed) * amplitude + scrollAmount/2;
+	uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;
 	
-	// Scale height to the texture array.
-	float scaledHeight = heightProportion * numTextures;
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
-	vec3 textureColor = vec3(0.0f);
-	vec3 normalMap = vec3(0.0f);
-	float totalWeight = 0.0f;
-	for (int i = 0; i < numTextures; i++) {
-		// Weight for how close the current height is to the middle of the textures band.
-		float weight = max(1.0 - abs(scaledHeight - i - 0.5f), 0.0f);
-		textureColor += texture(uTextures[i], uv).rgb * weight;
-		normalMap += texture(uNormalMaps[i], uv).rgb * weight;
-		totalWeight += weight;
-	}
-	// Normalize so the sum of contributions is 1 (solid texture to avoid light/dark patches).
-	textureColor /= totalWeight;
-	normalMap /= totalWeight;
+	vec3 textureColor = texture(uTexture, uv).rgb;
+	vec3 normalMap = texture(uNormalMap, uv).rgb;
 
+	// Make deeper parts of waves darker.
+	float proportion = (f_in.displacement / 4.0f) + 0.5f;
+	textureColor = mix(textureColor * 0.6f, textureColor, proportion);
 
+	// Ambient light.
 	float ambientStrength = 0.15f;
-	vec3 ambient = ambientStrength * lightColor * textureColor;
+	vec3 ambient = ambientStrength * lightColor * textureColor * skyColor;
 
 	vec3 normDir = calculateNormal(normalMap);
 	vec3 viewDir = normalize(-f_in.position);
@@ -136,14 +139,15 @@ void main() {
 	float attenuation = min(1, min(microfacet(NdotH, VdotH, NdotV), microfacet(NdotH, VdotH, NdotL)));
 
 	// Materials index of refraction.
-	float m = 1.5f - metallic; // Metals refract less.
+	float m = 1.0 - metallic; // Metals refract less.
 	float reflectance = pow(m - 1, 2) / pow(m + 1, 2);
 	// This is for dieletric (non-metals), so we want to interpolate based on the metallic factor.
 	vec3 dielectricF0 = vec3(reflectance);
 	vec3 f0 = mix(dielectricF0, textureColor, metallic);
 
 	// F component (schlicks approximation of fresnel).
-	vec3 schlick = f0 + (1 - f0) * pow(1 - VdotH, 5);
+	float fresnel = pow(1.0f - VdotH, 5.0f);
+	vec3 schlick = f0 + (1.0f - f0) * fresnel;
 
 	// Specular stength = D * G * F / angle.
 	vec3 rs = (beckman * attenuation * schlick) / (4.0f * NdotL * NdotV);
@@ -160,12 +164,12 @@ void main() {
 
 	// Reduce diffuse energy by specular reflectance (conservation of energy). Also metals don't have diffuse (shiny).
 	vec3 kd = (2.0f - schlick) * (1.0f - metallic);
-	// The diffuse uses the object color evenly scattered in all directions (using PI).
-	vec3 diffuse = kd * (textureColor / PI) * diffuseFactor;
+	// The diffuse uses the object color evenly scattered in all directions (using PI). Adds sky color.
+	vec3 diffuse = kd * (skyColor * ambientStrength + (textureColor / PI) * diffuseFactor);
 	
 	// Add ambient light to diffuse and specular.
 	vec3 finalColor = ambient + diffuse + specular;
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
-	fb_color = vec4(finalColor, 1.0f);
+	fb_color = vec4(finalColor, alpha);
 }
