@@ -18,9 +18,11 @@ uniform float uTime;
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
 
+uniform float test; // TODO DELETE
+
 
 // viewspace data (this must match the output of the fragment shader)
-in VertexData {
+in VertexData{
 	float displacement;
 	vec3 position;
 	vec3 normal;
@@ -89,6 +91,9 @@ vec3 calculateNormal(vec3 normalMap) {
 
 
 void main() {
+	// Sky color. May make controllable later.
+	vec3 skyColor = vec3(0.5f, 0.65f, 0.8f);
+
 	vec2 uv = f_in.textureCoord * textureScale;
 
 	// Texture wave animation. Might make these controllable in UI.
@@ -105,11 +110,11 @@ void main() {
 
 	// Make deeper parts of waves darker.
 	float proportion = (f_in.displacement / 4.0f) + 0.5f;
-	textureColor = mix(textureColor * 0.5f, textureColor, proportion);
+	textureColor = mix(textureColor * 0.6f, textureColor, proportion);
 
-
-	float ambientStrength = 0.1f;
-	vec3 ambient = ambientStrength * lightColor * textureColor;
+	// Ambient light.
+	float ambientStrength = 0.15f;
+	vec3 ambient = ambientStrength * lightColor * textureColor * skyColor;
 
 	vec3 normDir = calculateNormal(normalMap);
 	vec3 viewDir = normalize(-f_in.position);
@@ -133,14 +138,15 @@ void main() {
 	float attenuation = min(1, min(microfacet(NdotH, VdotH, NdotV), microfacet(NdotH, VdotH, NdotL)));
 
 	// Materials index of refraction.
-	float m = 1.5f - metallic; // Metals refract less.
+	float m = 1.0 - metallic; // Metals refract less.
 	float reflectance = pow(m - 1, 2) / pow(m + 1, 2);
 	// This is for dieletric (non-metals), so we want to interpolate based on the metallic factor.
 	vec3 dielectricF0 = vec3(reflectance);
 	vec3 f0 = mix(dielectricF0, textureColor, metallic);
 
 	// F component (schlicks approximation of fresnel).
-	vec3 schlick = f0 + (1 - f0) * pow(1 - VdotH, 5);
+	float fresnel = pow(1.0f - VdotH, 5.0f);
+	vec3 schlick = f0 + (1.0f - f0) * fresnel;
 
 	// Specular stength = D * G * F / angle.
 	vec3 rs = (beckman * attenuation * schlick) / (4.0f * NdotL * NdotV);
@@ -157,8 +163,8 @@ void main() {
 
 	// Reduce diffuse energy by specular reflectance (conservation of energy). Also metals don't have diffuse (shiny).
 	vec3 kd = (2.0f - schlick) * (1.0f - metallic);
-	// The diffuse uses the object color evenly scattered in all directions (using PI).
-	vec3 diffuse = kd * (textureColor / PI) * diffuseFactor;
+	// The diffuse uses the object color evenly scattered in all directions (using PI). Adds sky color.
+	vec3 diffuse = kd * (skyColor * ambientStrength + (textureColor / PI) * diffuseFactor);
 	
 	// Add ambient light to diffuse and specular.
 	vec3 finalColor = ambient + diffuse + specular;
