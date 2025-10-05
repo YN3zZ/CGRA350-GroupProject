@@ -354,7 +354,23 @@ void Application::renderGUI() {
     if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {
         placementNeedsUpdate = true;
     }
-    
+
+    ImGui::Separator();
+    ImGui::Text("Leaf Parameters");
+
+    if (ImGui::Checkbox("Render Leaves", &m_trees.renderLeaves)) {
+        // Just visual toggle
+    }
+    if (ImGui::SliderFloat("Leaf Size", &m_trees.leafSize, 0.1f, 1.0f, "%.2f")) {
+        meshNeedsUpdate = true;
+    }
+    if (ImGui::SliderFloat("Leaf Tilt", &m_trees.leafTiltAmount, 0.0f, 1.0f, "%.2f")) {
+        placementNeedsUpdate = true;
+    }
+    if (ImGui::SliderFloat("Leaf Roll", &m_trees.leafRollAmount, 0.0f, 1.0f, "%.2f")) {
+        placementNeedsUpdate = true;
+    }
+
     // Apply updates
     if (meshNeedsUpdate) {
         m_trees.markMeshDirty();

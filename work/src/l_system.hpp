@@ -26,9 +26,9 @@ public:
     
     // Generate the L-System string
     std::string generateString();
-    
-    // Convert L-System string to 3D mesh
-    cgra::gl_mesh generateTreeMesh(const std::string& lSystemString);
+
+    // Convert L-System string to 3D mesh and collect end node positions and directions
+    cgra::gl_mesh generateTreeMesh(const std::string& lSystemString, std::vector<glm::vec3>& outEndNodes, std::vector<glm::vec3>& outEndDirections);
     
     // Constructor
     LSystem();

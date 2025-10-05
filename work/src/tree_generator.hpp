@@ -24,6 +24,13 @@ public:
     std::vector<GLuint> barkTextures;
     bool useTextures = false;
 
+    // Leaf parameters
+    GLuint leafTexture = 0;
+    float leafSize = 0.4f;
+    bool renderLeaves = true;
+    float leafTiltAmount = 0.3f;   // Multiplier for tilt rotation (0-1)
+    float leafRollAmount = 0.3f;   // Multiplier for roll rotation (0-1)
+
     TreeGenerator() = default;
     ~TreeGenerator();  // Need clean up OpenGL resources
 
@@ -47,7 +54,18 @@ private:
     GLuint instanceVBO = 0;
     bool needsMeshRegeneration = true;
 
+    // Leaf data
+    std::vector<glm::vec3> baseLeafPositions;   // End nodes from single tree
+    std::vector<glm::vec3> baseLeafDirections;  // Branch directions at end nodes
+    std::vector<glm::mat4> leafTransforms;      // Transforms for all leaf instances
+    cgra::gl_mesh leafMesh;
+    GLuint leafInstanceVBO = 0;
+    GLuint leafShader = 0;
+
     void setupInstancing();
     void updateInstanceBuffer();
     void regenerateTreeMesh();
+    void generateLeafMesh();
+    void setupLeafInstancing();
+    void drawLeaves(const glm::mat4& view, const glm::mat4& proj);
 };
