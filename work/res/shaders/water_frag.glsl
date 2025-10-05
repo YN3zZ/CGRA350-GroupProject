@@ -98,9 +98,9 @@ void main() {
 
 	// Texture wave animation. Might make these controllable in UI.
 	float frequency = 1.0f;
-	float amplitude = meshScale / 250.0f;
+	float amplitude = 0.05f - meshScale / 15000.0f;
 	// Both UV x and y have waves. Some scrolling is added to make it move around. Gives the appeearance of moving water.
-	float scrollAmount = uTime * waterSpeed;
+	float scrollAmount = uTime * waterSpeed * 0.01f;
 	vec2 oldUV = uv.xy;
 	uv.y += sin(cos(oldUV.x) * frequency + uTime * waterSpeed) * amplitude + scrollAmount/2;
 	uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;

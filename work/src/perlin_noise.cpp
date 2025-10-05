@@ -51,7 +51,7 @@ void PerlinNoise::setShaderParams() {
 		glUniform1i(glGetUniformLocation(shader, name.c_str()), 12 + i);
 	}
 	glUniform1i(glGetUniformLocation(shader, "numTextures"), textureCount);
-	glUniform1f(glGetUniformLocation(shader, "textureScale"), meshScale / textureScale);
+	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));

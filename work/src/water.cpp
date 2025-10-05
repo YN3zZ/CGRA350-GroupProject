@@ -46,7 +46,7 @@ void Water::setShaderParams() {
 	glBindTexture(GL_TEXTURE_2D, normalMap);
 	glUniform1i(glGetUniformLocation(shader, "uNormalMap"), i);
 
-	glUniform1f(glGetUniformLocation(shader, "textureScale"), meshScale / textureScale);
+	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 	glUniform1f(glGetUniformLocation(shader, "meshScale"), meshScale);
 
 	// Send uniform for water speed and height.
