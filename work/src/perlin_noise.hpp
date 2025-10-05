@@ -11,10 +11,10 @@ private:
 	float generateNoise(glm::vec2 pos);
 	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
 	glm::vec2 getHeightRange();
-	std::vector<cgra::mesh_vertex> vertices;
 	cgra::gl_mesh terrain;
 	std::vector<GLuint> textures;
 	std::vector<GLuint> normalMaps;
+	std::vector<glm::vec3> validVertices;
 
 
 public:
@@ -30,6 +30,7 @@ public:
 	float meshScale = 10.0f; // Overall size of mesh.
 	int meshResolution = 50; // Square this to get total vertices.
 	float textureScale = 1.0f; // Size of texture.
+	std::vector<cgra::mesh_vertex> vertices;
 
 	// Lighting params.
 	glm::vec3 lightDirection{ 0.2f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
@@ -41,7 +42,6 @@ public:
 	// Constructor and public methods.
 	PerlinNoise();
 	void draw(const glm::mat4& view, const glm::mat4& proj);
-	void generate();
 	void setShaderParams();
 	void createMesh();
 	glm::vec3 sampleVertex(glm::vec2 position);
