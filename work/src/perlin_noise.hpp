@@ -22,13 +22,13 @@ public:
 	glm::mat4 modelTransform{ 1.0f };
 
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
-	float noisePersistence = 0.3f; // Height loss between octaves.
+	float noisePersistence = 0.4f; // Height loss between octaves.
 	float noiseLacunarity = 2.0f; // Frequency increase between octaves.
-	float noiseScale = 0.5f; // Spread of noise.
+	float noiseScale = 0.2f; // Spread of noise.
 	int noiseOctaves = 4; // Higher octaves add finer details.
-	float meshHeight = 2.5f; // Overall height.
-	float meshScale = 5.0f; // Overall size of mesh.
-	int meshResolution = 25; // Square this to get total vertices.
+	float meshHeight = 8.0f; // Overall height.
+	float meshScale = 10.0f; // Overall size of mesh.
+	int meshResolution = 50; // Square this to get total vertices.
 	float textureScale = 1.0f; // Size of texture.
 
 	// Lighting params.
