@@ -17,7 +17,7 @@ using namespace cgra;
 
 const vector<string> textureNames = { "sandyground1", "patchy-meadow1", "slatecliffrock" };
 
-// Initially generate the mesh and load the textures. Initialise shader and color immediately.
+// Initially generate the mesh and load the textures. Initialise shader and color separately.
 PerlinNoise::PerlinNoise() {
 	// Load all the textures using the path strings.
 	for (int i = 0; i < textureNames.size(); i++) {
@@ -51,14 +51,14 @@ void PerlinNoise::setShaderParams() {
 		glUniform1i(glGetUniformLocation(shader, name.c_str()), 12 + i);
 	}
 	glUniform1i(glGetUniformLocation(shader, "numTextures"), textureCount);
-	glUniform1f(glGetUniformLocation(shader, "textureScale"), meshScale / (5.0f * textureScale));
+	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 
 	// Send uniform for height range and model color terrain coloring.
 	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
 }
 
 
-// Get the min and max height of the terrain for texturing.
+// Get the min and max height (as x, y) of the terrain for texturing.
 vec2 PerlinNoise::getHeightRange() {
 	// Min and max height initially are the height of the first vertex.
 	vec2 heightRange(vertices[0].pos.y);
@@ -149,6 +149,20 @@ void PerlinNoise::createMesh() {
 			vertices[vertIndex] = mesh_vertex{ pos, norm, uv };
 		}
 	}
+
+	// Get places where trees can grow.
+	validVertices = vector<vec3>();
+	vec2 heightRange = getHeightRange();
+	float min = heightRange.x;
+	float max = heightRange.y;
+	for (int index = 0; index < meshResolution * meshResolution; index++) {
+		float height = vertices[index].pos.y;
+		float proportion = (height - min) / (max - min);
+		if (proportion >= 0.5 && proportion <= 0.7) {
+			validVertices.push_back(vertices[index].pos);
+			//vertices[index].pos.y = -2;
+		}
+	}
 	
 	// Create the triangles. Ignore the final vertex (meshResolution - 1) as the quads/triangles are formed up to it.
 	mesh_builder mb;
@@ -232,12 +246,31 @@ float PerlinNoise::generatePerlinNoise(vec2 pos, const vector<vec2> &octaveOffse
 // For drawing trees on the terrain.
 vec3 PerlinNoise::sampleVertex(vec2 position) {
 	int vertCount = meshResolution - 1;
-	float u = ((position.x + 0.5f) / meshScale + 1.0f) * 0.5f;
-	float v = ((position.y + 0.5f) / meshScale + 1.0f) * 0.5f;
+	//float x = ((position.x + 0.5f) / meshScale + 1.0f) * 0.5f;
+	//float y = ((position.y + 0.5f) / meshScale + 1.0f) * 0.5f;
 
-	int i = std::clamp(int(u * (meshResolution - 1)), 0, meshResolution - 1);
-	int j = std::clamp(int(v * (meshResolution - 1)), 0, meshResolution - 1);
+	// Old method mapped to the precise vertex.
+	//int i = std::clamp(int(x * (meshResolution - 1)), 0, meshResolution - 1);
+	//int j = std::clamp(int(y * (meshResolution - 1)), 0, meshResolution - 1);
+	//int index = i * meshResolution + j;
 
-	int index = i * meshResolution + j;
-	return vertices[index].pos;
+	float x = position.x;
+	float y = position.y;
+
+	// We want the closest valid vertex.
+	float bestDistance = 10000;
+	vec3 bestVert = vec3(0);
+	for (vec3 vert : validVertices) {
+		float distance = sqrt(pow(vert.x - x, 2) + pow(vert.y - y, 2));
+		if (distance < bestDistance) {
+			bestDistance = distance;
+			bestVert = vert;
+		}
+		// Good enough, so stop early to speed up.
+		if (bestDistance < 2) {
+			break;
+		}
+	}
+
+	return bestVert;
 }

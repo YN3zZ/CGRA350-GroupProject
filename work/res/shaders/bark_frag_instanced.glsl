@@ -6,6 +6,7 @@ uniform sampler2D uNormalTexture;
 uniform sampler2D uRoughnessTexture;
 uniform sampler2D uMetallicTexture;
 uniform vec3 uLightDir;
+uniform vec3 lightColor;
 uniform vec3 uViewPos;
 uniform bool uUseTextures;
 
@@ -27,21 +28,16 @@ float microfacet(float NdotH, float VdotH, float NdotV_L) {
 }
 
 void main() {
-    vec3 color;
-    vec3 normal;
-    float roughness = 0.8;
-    float metallic = 0.0;
-
     // Sample textures
     vec3 albedo = texture(uAlbedoTexture, f_in.texCoord).rgb;
 
     // Normal mapping
     vec3 normalMap = texture(uNormalTexture, f_in.texCoord).rgb;
     normalMap = normalize(normalMap * 2.0 - 1.0);  // Convert from [0,1] to [-1,1]
-    normal = normalize(f_in.TBN * normalMap);
+    vec3 normal = normalize(f_in.TBN * normalMap);
 
-    roughness = texture(uRoughnessTexture, f_in.texCoord).r;
-    metallic = texture(uMetallicTexture, f_in.texCoord).r;
+    float roughness = texture(uRoughnessTexture, f_in.texCoord).r;
+    float metallic = texture(uMetallicTexture, f_in.texCoord).r;
 
     // PBR lighting (Cook-Torrance BRDF)
     vec3 lightDir = normalize(-uLightDir);
