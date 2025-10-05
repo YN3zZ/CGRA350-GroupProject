@@ -237,6 +237,7 @@ void Application::render() {
 
 	// Draw skybox as last
 	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_LEQUAL);
 	glUseProgram(skyboxShader);
 	mat4 skyboxView = mat4(mat3(view));
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "view"), 1, false, value_ptr(skyboxView));
@@ -246,6 +247,7 @@ void Application::render() {
 	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
 	skyboxMesh.draw();
 	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
 }
 
 
