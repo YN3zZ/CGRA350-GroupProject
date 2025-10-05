@@ -23,6 +23,39 @@ using namespace cgra;
 using namespace glm;
 
 
+// Helper function to load cubemap textures
+GLuint loadCubemap(const vector<string>& faces) {
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    // Dont flip cubemaps vertically
+    stbi_set_flip_vertically_on_load(false);
+
+    for (unsigned int i = 0; i < faces.size(); i++) {
+        int width, height, nrChannels;
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data) {
+            GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+    }
+
+    // Restore flip setting for regular textures
+    stbi_set_flip_vertically_on_load(true);
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
+
 void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 	mat4 modelview = view * modelTransform;
 	
@@ -56,9 +89,97 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     m_trees.shader = bark_shader;
     m_trees.loadTextures();
     m_trees.setTreeType(3);
-    m_trees.generateTreesOnTerrain(&m_model);
-    // Set terrain texture params after trees are generated to prevent visual bugs.
-    m_model.setShaderParams();
+    m_trees.generateTreesOnTerrain(&m_terrain);
+
+    // Set terrain and water texture params after trees are generated to prevent visual bugs.
+    m_terrain.setShaderParams();
+    m_water.setShaderParams();
+
+    // Build skybox shader
+    shader_builder sb_skybox;
+    sb_skybox.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//skybox_vert.glsl"));
+    sb_skybox.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//skybox_frag.glsl"));
+    skyboxShader = sb_skybox.build();
+
+    // Load skybox cubemap textures
+    vector<string> skyboxFaces {
+        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Right.bmp"),
+        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Left.bmp"),
+        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Top.bmp"),
+        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Bottom.bmp"),
+        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Front.bmp"),
+        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Back.bmp")
+    };
+    skyboxTexture = loadCubemap(skyboxFaces);
+
+    // Create skybox cube mesh
+    float skyboxVertices[] = {
+        // positions
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
+    // Build skybox mesh
+    mesh_builder mb_skybox;
+    for (int i = 0; i < 36; i++) {
+        mesh_vertex v;
+        v.pos = vec3(skyboxVertices[i*3], skyboxVertices[i*3+1], skyboxVertices[i*3+2]);
+        v.norm = vec3(0.0f);
+        v.uv = vec2(0.0f);
+        mb_skybox.push_vertex(v);
+        mb_skybox.push_index(i);
+    }
+    skyboxMesh = mb_skybox.build();
+
+    // Change UI Style
+    ImGuiStyle &style = ImGui::GetStyle();
+    // Red button, white text, red background
+    style.Colors[ImGuiCol_Button] = ImVec4(0.9f, 0.1f, 0.37f, 1.0f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.65f, 0.25f, 0.37f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.3f, 0.2f, 0.2f, 1.0f);
+    // Window title bar
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
 }
 
 
@@ -96,12 +217,23 @@ void Application::render() {
 	// draw the model
 	m_model.draw(view, proj);
 
-	// compute camera position from view matrix
-	mat4 invView = inverse(view);
-	vec3 viewPos = vec3(invView[3]);
+	// Draw trees with lighting from terrain.
+	m_trees.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
 
-	// draw trees with lighting
-	m_trees.draw(view, proj, m_model.lightDirection, viewPos);
+	// Draw skybox as last
+	glDepthMask(GL_FALSE);
+	glUseProgram(skyboxShader);
+	mat4 skyboxView = mat4(mat3(view));
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "view"), 1, false, value_ptr(skyboxView));
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "projection"), 1, false, value_ptr(proj));
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
+	skyboxMesh.draw();
+	glDepthMask(GL_TRUE);
+
+    // Draw water with transparency after skybox
+    m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
 }
 
 
