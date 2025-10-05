@@ -10,6 +10,7 @@
 #include "cgra/cgra_mesh.hpp"
 #include "perlin_noise.hpp"
 #include "tree_generator.hpp"
+#include "water.hpp"
 
 
 // Basic model that holds the shader, mesh and transform for drawing.
@@ -49,8 +50,9 @@ private:
 	bool m_showWireframe = false;
 
 	// geometry
-	PerlinNoise m_model;
+	PerlinNoise m_terrain;
 	TreeGenerator m_trees;
+	Water m_water;
 	int m_treeType = 3;
 
 	// skybox
