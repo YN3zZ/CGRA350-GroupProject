@@ -128,7 +128,7 @@ void Application::render() {
     m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
 }
 
-float test = 0.0f;
+
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
@@ -160,10 +160,13 @@ void Application::renderGUI() {
 	ImGui::SliderInt("Octaves", &m_terrain.noiseOctaves, 1, 10, "%.0f");
 	ImGui::Separator();
 	ImGui::SliderFloat("Mesh Height", &m_terrain.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
+    // Water is the same size and resolution as the terrain.
     if (ImGui::SliderFloat("Mesh Size", &m_terrain.meshScale, 2.0f, 500.0f, "%.1f", 4.0f)) {
         m_water.meshScale = m_terrain.meshScale; // Water is the same size as the terrain.
     }
-	ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f");
+    if (ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f")) {
+        m_water.meshResolution = m_terrain.meshResolution;
+    }
 	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 0.1f, 5.0f, "%.1f");
 	ImGui::Separator();
 	ImGui::SliderFloat3("Light Color", value_ptr(m_terrain.lightColor), 0.0f, 1.0f);
@@ -174,6 +177,7 @@ void Application::renderGUI() {
     ImGui::Text("Water Parameters");
     ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
+    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
     
     // Generates the mesh and shaders for terrain and water.
     if (ImGui::Button("Generate")) {
@@ -184,15 +188,6 @@ void Application::renderGUI() {
         m_water.setShaderParams();
     }
 
-
-    // TODO DELETE
-    if (ImGui::SliderFloat("Test", &test, 0.0f, 5.0f)) {
-        glUseProgram(m_water.shader);
-        glUniform1f(glGetUniformLocation(m_water.shader, "test"), test);
-    }
-
-
-    
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     

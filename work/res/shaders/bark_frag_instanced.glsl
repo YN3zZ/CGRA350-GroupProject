@@ -36,7 +36,7 @@ void main() {
     vec3 viewDir = normalize(uViewPos - f_in.worldPos);
 
     // Ambient
-    float ambientStrength = 0.15f;
+    float ambientStrength = 0.2f;
     vec3 ambient = lightColor * ambientStrength * color;
 
     // Diffuse

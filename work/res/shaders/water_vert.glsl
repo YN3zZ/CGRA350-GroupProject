@@ -5,6 +5,8 @@ uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
 // Current time for animating waves displacement.
 uniform float uTime;
+uniform float meshScale;
+uniform float waterSpeed;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -22,10 +24,10 @@ out VertexData{
 } v_out;
 
 void main() {
-    // Wave displacement animation
-    float frequency = 120.0f;
-    float amplitude = 0.01f; // Make this scale by mesh size.
-    float speed = 2.2f;
+    // Wave displacement animation. Scales by mesh size.
+    float frequency = meshScale * 4.0f;
+    float amplitude = meshScale / 800.0f;
+    float speed = waterSpeed * 4.0f;
     float displacement = sin(cos(sin(uv.x)) * frequency + uTime * speed) + cos(cos(uv.y) * frequency/2.0f + uTime * speed);
     vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
     // Store displacement and for depth coloring.
