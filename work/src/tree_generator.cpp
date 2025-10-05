@@ -41,7 +41,7 @@ void TreeGenerator::loadTextures() {
     useTextures = true;
 
     // Load leaf texture
-    string leafPath = CGRA_SRCDIR + string("/res/textures/leaves/plant_3.png");
+    string leafPath = CGRA_SRCDIR + string("/res/textures/leaves/plant_03.png");
     rgba_image leafImage = rgba_image(leafPath);
     leafTexture = leafImage.uploadTexture();
 
