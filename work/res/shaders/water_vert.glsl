@@ -13,7 +13,7 @@ layout(location = 2) in vec2 uv;
 
 // model data (this must match the input of the fragment shader)
 out VertexData {
-	float globalHeight;
+    float displacement;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
@@ -22,20 +22,18 @@ out VertexData {
 } v_out;
 
 void main() {
-	// Send untransformed global y position for texture mapping based on height proportion.
-	v_out.globalHeight = aPosition.y;
-
     // Wave displacement animation
-    float frequency = 80.0f;
-    float amplitude = 0.03f;
-    float speed = 0.6f;
-    float displacement = (sin(uv.x * frequency + uTime * speed) + cos(uv.y * frequency/2.0f + uTime * speed)) * amplitude;
-    vec3 newPosition = aPosition + vec3(0, displacement, 0);
+    float frequency = 50.0f;
+    float amplitude = 0.04f; // Make this scale by mesh size.
+    float speed = 0.8f;
+    float displacement = sin(cos(sin(uv.x)) * frequency + uTime * speed) + cos(cos(uv.y) * frequency/2.0f + uTime * speed);
+    vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
+    v_out.displacement = displacement;
 
-    // Get nearby gradient to recalculate normals.
+    // Get nearby gradient to recalculate normals (central difference derivative).
     float delta = 0.0001f;
     float gradX = sin((uv.x + delta) * frequency + uTime * speed) - sin((uv.x - delta) * frequency + uTime * speed);
-    float gradY = cos((uv.y + delta) * frequency / 2.0f + uTime * speed) - cos((uv.y - delta) * frequency / 2.0f + uTime * speed);
+    float gradY = cos((uv.y + delta) * frequency/2.0f + uTime * speed) - cos((uv.y - delta) * frequency/2.0f + uTime * speed);
     vec3 newNormal = normalize(vec3(-gradX, 1.0f, -gradY));
 
 	// transform vertex data to viewspace

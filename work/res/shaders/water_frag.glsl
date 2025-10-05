@@ -21,7 +21,7 @@ uniform sampler2D uNormalMap;
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
-	float globalHeight;
+	float displacement;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
@@ -102,6 +102,10 @@ void main() {
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
 	vec3 textureColor = texture(uTexture, uv).rgb;
 	vec3 normalMap = texture(uNormalMap, uv).rgb;
+
+	// Make deeper parts of waves darker.
+	float proportion = (f_in.displacement / 4.0f) + 0.5f;
+	textureColor = mix(textureColor * 0.5f, textureColor, proportion);
 
 
 	float ambientStrength = 0.1f;
