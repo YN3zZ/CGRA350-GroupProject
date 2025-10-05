@@ -36,10 +36,11 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 
 
 Application::Application(GLFWwindow *window) : m_window(window) {
+    // Build terrain shader.
     shader_builder sb;
     sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
 	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
-	GLuint shader = sb.build();
+	GLuint terrainShader = sb.build();
   
     // Build bark shader for trees with textures
     shader_builder sb_bark;
@@ -47,18 +48,42 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     sb_bark.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_frag_instanced.glsl"));
     GLuint bark_shader = sb_bark.build();
 
+    // Build water shader.
+    shader_builder sb_water;
+    sb_water.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//water_vert.glsl"));
+    sb_water.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//water_frag.glsl"));
+    GLuint waterShader = sb_water.build();
+
     // Initialise terrain model using perlin noise.
-	m_model = PerlinNoise();
-    m_model.shader = shader;
-    m_model.createMesh();
+	m_terrain = PerlinNoise();
+    m_terrain.shader = terrainShader;
+    m_terrain.createMesh();
+
+    // Create water model
+    m_water = Water();
+    m_water.shader = waterShader;
+    m_water.createMesh();
 
     // Initialize trees with bark shader
     m_trees.shader = bark_shader;
     m_trees.loadTextures();
     m_trees.setTreeType(3);
-    m_trees.generateTreesOnTerrain(&m_model);
-    // Set terrain texture params after trees are generated to prevent visual bugs.
-    m_model.setShaderParams();
+    m_trees.generateTreesOnTerrain(&m_terrain);
+
+    // Set terrain and water texture params after trees are generated to prevent visual bugs.
+    m_terrain.setShaderParams();
+    m_water.setShaderParams();
+
+    // Change UI Style
+    ImGuiStyle &style = ImGui::GetStyle();
+    // Red button, white text, red background
+    style.Colors[ImGuiCol_Button] = ImVec4(0.9f, 0.1f, 0.37f, 1.0f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.65f, 0.25f, 0.37f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.3f, 0.2f, 0.2f, 1.0f);
+    // Window title bar
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
 }
 
 
@@ -94,21 +119,20 @@ void Application::render() {
 	glPolygonMode(GL_FRONT_AND_BACK, (m_showWireframe) ? GL_LINE : GL_FILL);
 
 	// draw the model
-	m_model.draw(view, proj);
+	m_terrain.draw(view, proj);
 
-	// compute camera position from view matrix
-	mat4 invView = inverse(view);
-	vec3 viewPos = vec3(invView[3]);
-
-	// draw trees with lighting
-	m_trees.draw(view, proj, m_model.lightDirection, viewPos);
+	// Draw trees with lighting from terrain.
+	m_trees.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
+    
+    // Draw water with lighting from terrain.
+    m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
 }
 
 
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(350, 600), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(350, 800), ImGuiSetCond_Once); // (width, height)
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
@@ -129,40 +153,48 @@ void Application::renderGUI() {
     ImGui::Text("Terrain Generation");
     
 	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
-	ImGui::SliderInt("Seed", &m_model.noiseSeed, 0, 100, "%.0f");
-	ImGui::SliderFloat("Persistence", &m_model.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
-	ImGui::SliderFloat("Lacunarity", &m_model.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
-	ImGui::SliderFloat("Noise Scale", &m_model.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
-	ImGui::SliderInt("Octaves", &m_model.noiseOctaves, 1, 10, "%.0f");
+	ImGui::SliderInt("Seed", &m_terrain.noiseSeed, 0, 100, "%.0f");
+	ImGui::SliderFloat("Persistence", &m_terrain.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
+	ImGui::SliderFloat("Lacunarity", &m_terrain.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
+	ImGui::SliderFloat("Noise Scale", &m_terrain.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
+	ImGui::SliderInt("Octaves", &m_terrain.noiseOctaves, 1, 10, "%.0f");
 	ImGui::Separator();
-	ImGui::SliderFloat("Mesh Height", &m_model.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
-	ImGui::SliderFloat("Mesh Size", &m_model.meshScale, 0.1f, 500.0f, "%.1f", 4.0f);
-	ImGui::SliderInt("Mesh Resolution", &m_model.meshResolution, 10, 500, "%.0f");
-	ImGui::SliderFloat("Texture Size", &m_model.textureScale, 0.1f, 5.0f, "%.1f");
+	ImGui::SliderFloat("Mesh Height", &m_terrain.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
+    // Water is the same size and resolution as the terrain.
+    if (ImGui::SliderFloat("Mesh Size", &m_terrain.meshScale, 2.0f, 500.0f, "%.1f", 4.0f)) {
+        m_water.meshScale = m_terrain.meshScale; // Water is the same size as the terrain.
+    }
+    if (ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f")) {
+        m_water.meshResolution = m_terrain.meshResolution;
+    }
+	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 0.1f, 5.0f, "%.1f");
 	ImGui::Separator();
-	ImGui::SliderFloat3("Light Color", value_ptr(m_model.lightColor), 0.0f, 1.0f);
-	ImGui::SliderFloat("Light Angle", &m_model.lightDirection.x, -1.0f, 1.0f);
+	ImGui::SliderFloat3("Light Color", value_ptr(m_terrain.lightColor), 0.0f, 1.0f);
+	ImGui::SliderFloat("Light Angle", &m_terrain.lightDirection.x, -1.0f, 1.0f);
     // L-System parameters that affect mesh generation
     bool meshNeedsUpdate = false;
+
+    ImGui::Text("Water Parameters");
+    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
+    ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
+    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
     
-    if (ImGui::Button("Generate Terrain")) {
+    // Generates the mesh and shaders for terrain and water.
+    if (ImGui::Button("Generate")) {
         meshNeedsUpdate = true;
-        m_model.createMesh();
-        m_model.setShaderParams();
+        m_terrain.createMesh();
+        m_terrain.setShaderParams();
+        m_water.createMesh();
+        m_water.setShaderParams();
     }
-    
-    ImGui::Separator();
-    ImGui::Text("L-System Trees");
-    
-    // Tree placement parameters
-    if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 1, 200)) {
-        m_trees.regenerateOnTerrain(&m_model);
-    }
-    
+
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
-    
+    // Tree placement parameters
+    if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 0, 200)) {
+        m_trees.regenerateOnTerrain(&m_terrain);
+    }
     
     if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
         meshNeedsUpdate = true;
@@ -204,9 +236,9 @@ void Application::renderGUI() {
     // Apply updates
     if (meshNeedsUpdate) {
         m_trees.markMeshDirty();
-        m_trees.regenerateOnTerrain(&m_model);
+        m_trees.regenerateOnTerrain(&m_terrain);
     } else if (placementNeedsUpdate) {
-        m_trees.regenerateOnTerrain(&m_model);
+        m_trees.regenerateOnTerrain(&m_terrain);
     }
 
 	// finish creating window
