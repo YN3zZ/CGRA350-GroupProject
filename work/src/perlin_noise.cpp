@@ -9,6 +9,7 @@
 #include "cgra/cgra_mesh.hpp"
 #include "perlin_noise.hpp"
 #include "cgra/cgra_image.hpp"
+#include "performance_timer.hpp"
 
 using namespace std;
 using namespace glm;
@@ -22,10 +23,18 @@ PerlinNoise::PerlinNoise() {
 	// Load all the textures using the path strings.
 	for (int i = 0; i < textureNames.size(); i++) {
 		string pathStart = CGRA_SRCDIR + string("/res/textures/") + textureNames[i];
-		rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
-		rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
-		textures.push_back(textureImage.uploadTexture());
-		normalMaps.push_back(normalImage.uploadTexture());
+
+		{
+			PerformanceTimer timer("    - " + textureNames[i] + "_albedo.png");
+			rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
+			textures.push_back(textureImage.uploadTexture());
+		}
+
+		{
+			PerformanceTimer timer("    - " + textureNames[i] + "_normal.png");
+			rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
+			normalMaps.push_back(normalImage.uploadTexture());
+		}
 	}
 }
 

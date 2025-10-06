@@ -9,6 +9,7 @@
 #include "cgra/cgra_mesh.hpp"
 #include "water.hpp"
 #include "cgra/cgra_image.hpp"
+#include "performance_timer.hpp"
 
 using namespace std;
 using namespace glm;
@@ -21,10 +22,18 @@ Water::Water() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	string pathStart = CGRA_SRCDIR + string("/res/textures/") + "water";
-	rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
-	rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
-	texture = textureImage.uploadTexture();
-	normalMap = normalImage.uploadTexture();
+
+	{
+		PerformanceTimer timer("    - water_albedo.png");
+		rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
+		texture = textureImage.uploadTexture();
+	}
+
+	{
+		PerformanceTimer timer("    - water_normal.png");
+		rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
+		normalMap = normalImage.uploadTexture();
+	}
 
 	// Get starting time for animations to base off.
 	startTime = (float)glfwGetTime();

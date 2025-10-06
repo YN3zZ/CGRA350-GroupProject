@@ -2,6 +2,7 @@
 #include "perlin_noise.hpp"
 #include "cgra/cgra_image.hpp"
 #include "cgra/cgra_shader.hpp"
+#include "performance_timer.hpp"
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -34,6 +35,7 @@ void TreeGenerator::loadTextures() {
 
     for (int i = 0; i < barkTexturePaths.size(); i++) {
         string path = CGRA_SRCDIR + string("/res/textures/") + barkTexturePaths[i];
+        PerformanceTimer timer("    - " + barkTexturePaths[i]);
         rgba_image textureImage = rgba_image(string(path));
         barkTextures.push_back(textureImage.uploadTexture());
     }
@@ -41,14 +43,20 @@ void TreeGenerator::loadTextures() {
     useTextures = true;
 
     // Load leaf texture
-    string leafPath = CGRA_SRCDIR + string("/res/textures/leaves/plant_03.png");
-    rgba_image leafImage = rgba_image(leafPath);
-    leafTexture = leafImage.uploadTexture();
+    {
+        PerformanceTimer timer("    - leaves/plant_03.png");
+        string leafPath = CGRA_SRCDIR + string("/res/textures/leaves/plant_03.png");
+        rgba_image leafImage = rgba_image(leafPath);
+        leafTexture = leafImage.uploadTexture();
+    }
 
-    shader_builder sb_leaf;
-    sb_leaf.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + string("//res//shaders//leaf_vert.glsl"));
-    sb_leaf.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + string("//res//shaders//leaf_frag.glsl"));
-    leafShader = sb_leaf.build();
+    {
+        PerformanceTimer timer("    - leaf shader compilation");
+        shader_builder sb_leaf;
+        sb_leaf.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + string("//res//shaders//leaf_vert.glsl"));
+        sb_leaf.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + string("//res//shaders//leaf_frag.glsl"));
+        leafShader = sb_leaf.build();
+    }
 }
 
 void TreeGenerator::regenerateTreeMesh() {
