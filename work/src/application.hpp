@@ -54,7 +54,8 @@ private:
 	TreeGenerator m_trees;
 	Water m_water;
 	int m_treeType = 3;
-	// Camera movement.
+
+	// First person camera movement.
 	bool wPressed = false;
 	bool sPressed = false;
 	bool aPressed = false;
@@ -62,6 +63,8 @@ private:
 	bool shiftPressed = false;
 	bool spacePressed = false;
 	glm::vec3 cameraPosition{ 0.0f, 20.0f, 0.0f };
+	float cameraSpeed = 0.05f;
+	bool firstPersonCamera = true;
 	
 public:
 	// setup
