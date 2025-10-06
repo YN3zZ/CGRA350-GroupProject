@@ -168,6 +168,8 @@ void Application::renderGUI() {
     ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
     ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
     ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
+    ImGui::Checkbox("First person camera", &firstPersonCamera);
+    ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.01f, 0.2f, "%.2f", 2.0f);
 
     // helpful drawing options
     ImGui::Checkbox("Show axis", &m_show_axis);
