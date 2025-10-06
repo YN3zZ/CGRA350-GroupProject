@@ -89,8 +89,6 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 }
 
 
-
-bool newCamera = true;
 void Application::render() {
 	
 	// retrieve the window hieght
@@ -112,21 +110,18 @@ void Application::render() {
 	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 	// view matrix
-	mat4 view = translate(mat4(1), vec3(0, 0, -m_distance))
-		* rotate(mat4(1), m_pitch, vec3(1, 0, 0))
-		* rotate(mat4(1), m_yaw,   vec3(0, 1, 0));
-
-    if (newCamera) {
+    mat4 view;
+    if (firstPersonCamera) {
         view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
             * rotate(mat4(1), m_yaw, vec3(0, 1, 0))
             * translate(mat4(1), -cameraPosition);
 
-        float cameraSpeed = 0.05f;
         float angle = -m_yaw;
         vec3 forward = vec3(-sin(angle), 0.0f, -cos(angle));
         vec3 up(0.0f, 1.0f, 0.0f);
         vec3 right = vec3(cos(angle), 0.0f, -sin(angle));
 
+        // Add the key movement together to allow diagonal movement.
         vec3 cameraMove(0.0f);
         if (wPressed) cameraMove += forward;
         if (sPressed) cameraMove -= forward;
@@ -135,10 +130,15 @@ void Application::render() {
         if (spacePressed) cameraMove += up;
         if (shiftPressed) cameraMove -= up;
 
-        // Opposing directions cancel out and normalise makes diagonal the same speed as straight.
-        if (cameraMove != vec3(0.0f)) {
-            cameraPosition += cameraMove * cameraSpeed;
+        // Opposing directions cancel out and normalise makes diagonal movement the same speed as straight.
+        if (length(cameraMove) > 0) {
+            cameraPosition += normalize(cameraMove) * cameraSpeed;
         }
+    }
+    else { // Old camera focused on a single point.
+        view = translate(mat4(1), vec3(0, 0, -m_distance))
+            * rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+            * rotate(mat4(1), m_yaw, vec3(0, 1, 0));
     }
 
 	// helpful draw options
