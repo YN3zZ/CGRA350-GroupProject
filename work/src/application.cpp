@@ -16,6 +16,7 @@
 #include "cgra/cgra_shader.hpp"
 #include "cgra/cgra_wavefront.hpp"
 #include "perlin_noise.hpp"
+#include "performance_timer.hpp"
 
 
 using namespace std;
@@ -69,65 +70,122 @@ void basic_model::draw(const glm::mat4 &view, const glm::mat4 proj) {
 
 
 Application::Application(GLFWwindow *window) : m_window(window) {
+    PerformanceTimer::printHeader("Application Initialization Profiling");
+    PerformanceTimer totalTimer("TOTAL INITIALIZATION TIME", false);
+
     // Build terrain shader.
-    shader_builder sb;
-    sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
-	sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
-	GLuint terrainShader = sb.build();
-  
+    GLuint terrainShader;
+    {
+        PerformanceTimer timer("Terrain shader compilation");
+        shader_builder sb;
+        sb.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_vert.glsl"));
+        sb.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//terrain_frag.glsl"));
+        terrainShader = sb.build();
+    }
+
     // Build bark shader for trees with textures
-    shader_builder sb_bark;
-    sb_bark.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_vert_instanced.glsl"));
-    sb_bark.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_frag_instanced.glsl"));
-    GLuint bark_shader = sb_bark.build();
+    GLuint bark_shader;
+    {
+        PerformanceTimer timer("Bark shader compilation");
+        shader_builder sb_bark;
+        sb_bark.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_vert_instanced.glsl"));
+        sb_bark.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bark_frag_instanced.glsl"));
+        bark_shader = sb_bark.build();
+    }
 
     // Build water shader.
-    shader_builder sb_water;
-    sb_water.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//water_vert.glsl"));
-    sb_water.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//water_frag.glsl"));
-    GLuint waterShader = sb_water.build();
+    GLuint waterShader;
+    {
+        PerformanceTimer timer("Water shader compilation");
+        shader_builder sb_water;
+        sb_water.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//water_vert.glsl"));
+        sb_water.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//water_frag.glsl"));
+        waterShader = sb_water.build();
+    }
 
     // Initialise terrain model using perlin noise.
-	m_terrain = PerlinNoise();
+    {
+        PerformanceTimer timer("Terrain constructor (includes 6 texture loads)");
+        m_terrain = PerlinNoise();
+    }
     m_terrain.shader = terrainShader;
-    m_terrain.createMesh();
+
+    {
+        PerformanceTimer timer("Terrain mesh generation");
+        m_terrain.createMesh();
+    }
 
     // Create water model
-    m_water = Water();
+    {
+        PerformanceTimer timer("Water constructor (includes 2 texture loads)");
+        m_water = Water();
+    }
     m_water.shader = waterShader;
+
     // Make the terrain and water have the same resolution
-    m_water.meshResolution = m_terrain.meshResolution; 
-    m_water.createMesh();
-   
+    m_water.meshResolution = m_terrain.meshResolution;
+
+    {
+        PerformanceTimer timer("Water mesh generation");
+        m_water.createMesh();
+    }
+
     // Initialize trees with bark shader
     m_trees.shader = bark_shader;
-    m_trees.loadTextures();
-    m_trees.setTreeType(3);
-    m_trees.generateTreesOnTerrain(&m_terrain);
+
+    {
+        PerformanceTimer timer("Tree texture loading (5 textures)");
+        m_trees.loadTextures();
+    }
+
+    {
+        PerformanceTimer timer("Tree L-system setup");
+        m_trees.setTreeType(3);
+    }
+
+    {
+        PerformanceTimer timer("Tree generation on terrain");
+        m_trees.generateTreesOnTerrain(&m_terrain);
+    }
 
     // Set terrain and water texture params after trees are generated to prevent visual bugs.
-    m_terrain.setShaderParams();
-    m_water.setShaderParams();
+    {
+        PerformanceTimer timer("Terrain shader params");
+        m_terrain.setShaderParams();
+    }
+
+    {
+        PerformanceTimer timer("Water shader params");
+        m_water.setShaderParams();
+    }
 
     // Build skybox shader
-    shader_builder sb_skybox;
-    sb_skybox.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//skybox_vert.glsl"));
-    sb_skybox.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//skybox_frag.glsl"));
-    skyboxShader = sb_skybox.build();
+    {
+        PerformanceTimer timer("Skybox shader compilation");
+        shader_builder sb_skybox;
+        sb_skybox.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//skybox_vert.glsl"));
+        sb_skybox.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//skybox_frag.glsl"));
+        skyboxShader = sb_skybox.build();
+    }
 
     // Load skybox cubemap textures
-    vector<string> skyboxFaces {
-        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Right.bmp"),
-        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Left.bmp"),
-        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Top.bmp"),
-        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Bottom.bmp"),
-        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Front.bmp"),
-        CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Back.bmp")
-    };
-    skyboxTexture = loadCubemap(skyboxFaces);
+    {
+        PerformanceTimer timer("Skybox texture loading (6 cubemap faces)");
+        vector<string> skyboxFaces {
+            CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Right.bmp"),
+            CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Left.bmp"),
+            CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Top.bmp"),
+            CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Bottom.bmp"),
+            CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Front.bmp"),
+            CGRA_SRCDIR + std::string("//res//textures//skybox//Daylight_Box_Back.bmp")
+        };
+        skyboxTexture = loadCubemap(skyboxFaces);
+    }
 
     // Create skybox cube mesh
-    float skyboxVertices[] = {
+    {
+        PerformanceTimer timer("Skybox mesh generation");
+        float skyboxVertices[] = {
         // positions
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -182,7 +240,12 @@ Application::Application(GLFWwindow *window) : m_window(window) {
         mb_skybox.push_vertex(v);
         mb_skybox.push_index(i);
     }
-    skyboxMesh = mb_skybox.build();
+        skyboxMesh = mb_skybox.build();
+    }
+
+    PerformanceTimer::printSeparator();
+    totalTimer.printElapsed();
+    PerformanceTimer::printSeparator();
 
     // Change UI Style
     ImGuiStyle &style = ImGui::GetStyle();
