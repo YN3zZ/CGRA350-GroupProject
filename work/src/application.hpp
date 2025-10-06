@@ -55,12 +55,23 @@ private:
 	Water m_water;
 	int m_treeType = 3;
 
+	// First person camera movement.
+	bool wPressed = false;
+	bool sPressed = false;
+	bool aPressed = false;
+	bool dPressed = false;
+	bool shiftPressed = false;
+	bool spacePressed = false;
+	glm::vec3 cameraPosition{ 0.0f, 20.0f, 0.0f };
+	float cameraSpeed = 0.05f;
+	bool firstPersonCamera = true;
+	
 	// skybox
 	GLuint skyboxShader = 0;
 	GLuint skyboxTexture = 0;
 	cgra::gl_mesh skyboxMesh;
 
-
+  
 public:
 	// setup
 	Application(GLFWwindow *);
