@@ -1,6 +1,7 @@
 #include "tree_generator.hpp"
 #include "perlin_noise.hpp"
 #include "cgra/cgra_image.hpp"
+#include "cgra/cgra_shader.hpp"
 #include <random>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -14,6 +15,12 @@ TreeGenerator::~TreeGenerator() {
     // Clean up OpenGL resources
     if (instanceVBO != 0) {
         glDeleteBuffers(1, &instanceVBO);
+    }
+    if (leafInstanceVBO != 0) {
+        glDeleteBuffers(1, &leafInstanceVBO);
+    }
+    if (leafTexture != 0) {
+        glDeleteTextures(1, &leafTexture);
     }
 }
 
@@ -32,17 +39,32 @@ void TreeGenerator::loadTextures() {
     }
 
     useTextures = true;
+
+    // Load leaf texture
+    string leafPath = CGRA_SRCDIR + string("/res/textures/leaves/plant_03.png");
+    rgba_image leafImage = rgba_image(leafPath);
+    leafTexture = leafImage.uploadTexture();
+
+    shader_builder sb_leaf;
+    sb_leaf.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + string("//res//shaders//leaf_vert.glsl"));
+    sb_leaf.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + string("//res//shaders//leaf_frag.glsl"));
+    leafShader = sb_leaf.build();
 }
 
 void TreeGenerator::regenerateTreeMesh() {
     // Update L-system parameters
     lSystem.cylinderSides = cylinderSides;
     lSystem.branchTaper = branchTaper;
-    
-    // Generate the tree mesh only once
+
+    // Generate the tree mesh and collect end nodes and directions for leaves
     string lSystemString = lSystem.generateString();
-    treeMesh = lSystem.generateTreeMesh(lSystemString);
-    
+    baseLeafPositions.clear();
+    baseLeafDirections.clear();
+    treeMesh = lSystem.generateTreeMesh(lSystemString, baseLeafPositions, baseLeafDirections);
+
+    // Generate leaf mesh
+    generateLeafMesh();
+
     needsMeshRegeneration = false;
 }
 
@@ -97,9 +119,77 @@ void TreeGenerator::updateInstanceBuffer() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+void TreeGenerator::generateLeafMesh() {
+    // Create a cross-billboard with 3 quads at 60 degree intervals
+    mesh_builder mb;
+
+    float halfSize = leafSize * 0.5f;
+
+    for (int i = 0; i < 3; i++) {
+        float angle = radians(i * 60.0f);
+        vec3 right = vec3(cos(angle), 0, sin(angle));
+        vec3 up = vec3(0, 1, 0);
+
+        // Create quad vertices
+        vec3 v0 = -right * halfSize - up * halfSize;
+        vec3 v1 = right * halfSize - up * halfSize;
+        vec3 v2 = right * halfSize + up * halfSize;
+        vec3 v3 = -right * halfSize + up * halfSize;
+
+        vec3 normal = cross(right, up);
+
+        unsigned int baseIdx = i * 4;
+
+        mb.push_vertex({v0, normal, vec2(0, 0)});
+        mb.push_vertex({v1, normal, vec2(1, 0)});
+        mb.push_vertex({v2, normal, vec2(1, 1)});
+        mb.push_vertex({v3, normal, vec2(0, 1)});
+
+        mb.push_indices({baseIdx, baseIdx + 1, baseIdx + 2});
+        mb.push_indices({baseIdx, baseIdx + 2, baseIdx + 3});
+    }
+
+    leafMesh = mb.build();
+}
+
+void TreeGenerator::setupLeafInstancing() {
+    if (leafTransforms.empty()) return;
+
+    // Create instance buffer if it doesn't exist
+    if (leafInstanceVBO == 0) {
+        glGenBuffers(1, &leafInstanceVBO);
+    }
+
+    // Upload instance data
+    glBindBuffer(GL_ARRAY_BUFFER, leafInstanceVBO);
+    glBufferData(GL_ARRAY_BUFFER,
+                 leafTransforms.size() * sizeof(mat4),
+                 leafTransforms.data(),
+                 GL_DYNAMIC_DRAW);
+
+    // Bind leaf mesh VAO and add instance attributes
+    glBindVertexArray(leafMesh.vao);
+    glBindBuffer(GL_ARRAY_BUFFER, leafInstanceVBO);
+
+    // Set up instance attributes (same as tree)
+    size_t vec4Size = sizeof(vec4);
+    for (unsigned int i = 0; i < 4; i++) {
+        unsigned int attribLocation = 3 + i;
+        glEnableVertexAttribArray(attribLocation);
+        glVertexAttribPointer(attribLocation, 4, GL_FLOAT, GL_FALSE,
+                             sizeof(mat4),
+                             (void*)(i * vec4Size));
+        glVertexAttribDivisor(attribLocation, 1);
+    }
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void TreeGenerator::generateTreesOnTerrain(PerlinNoise* perlinNoise) {
     // Clear only the transforms, not the mesh
     treeTransforms.clear();
+    leafTransforms.clear();
 
     // Mark that we need to regenerate the mesh if L-system parameters changed
     if (needsMeshRegeneration) {
@@ -125,10 +215,52 @@ void TreeGenerator::generateTreesOnTerrain(PerlinNoise* perlinNoise) {
                         glm::scale(mat4(1.0f), vec3(scale));
 
         treeTransforms.push_back(transform);
+
+        // Create leaf transforms for this tree instance with proper orientation
+        for (size_t j = 0; j < baseLeafPositions.size(); j++) {
+            vec3 leafPos = baseLeafPositions[j];
+            vec3 branchDir = baseLeafDirections[j];
+
+            // Transform position and direction to world space
+            vec3 worldLeafPos = vec3(transform * vec4(leafPos, 1.0f));
+            vec3 worldBranchDir = normalize(vec3(transform * vec4(branchDir, 0.0f)));
+
+            // Create rotation matrix to align leaf with branch direction
+            // The leaf texture grows from bottom (0,-1,0) to top (0,1,0) in local space
+            // We need to rotate so that local Y-axis aligns with world branch direction
+            vec3 up = worldBranchDir;
+            vec3 right = normalize(cross(vec3(0, 1, 0), up));
+            if (length(right) < 0.001f) {
+                right = normalize(cross(vec3(1, 0, 0), up));
+            }
+            vec3 forward = normalize(cross(up, right));
+
+            // Construct orientation matrix
+            mat4 orientation = mat4(
+                vec4(right, 0),
+                vec4(up, 0),
+                vec4(forward, 0),
+                vec4(0, 0, 0, 1)
+            );
+
+            // Add random rotations for variety
+            float twist = rotationDist(rng);           // Random twist around branch direction
+            float tilt = (rotationDist(rng) - pi<float>()) * leafTiltAmount;  // Random tilt
+            float roll = (rotationDist(rng) - pi<float>()) * leafRollAmount;  // Random roll
+
+            mat4 leafTransform = translate(mat4(1.0f), worldLeafPos) *
+                                orientation *
+                                rotate(mat4(1.0f), twist, vec3(0, 1, 0)) *
+                                rotate(mat4(1.0f), tilt, vec3(1, 0, 0)) *
+                                rotate(mat4(1.0f), roll, vec3(0, 0, 1));
+
+            leafTransforms.push_back(leafTransform);
+        }
     }
 
     // Set up instancing with the new transforms
     setupInstancing();
+    setupLeafInstancing();
 }
 
 void TreeGenerator::setTreeType(int type) {
@@ -155,6 +287,46 @@ void TreeGenerator::setTreeType(int type) {
     }
     
     needsMeshRegeneration = true;
+}
+
+void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj) {
+    if (leafTransforms.empty() || !renderLeaves || leafShader == 0) return;
+
+    glUseProgram(leafShader);
+
+    glUniformMatrix4fv(glGetUniformLocation(leafShader, "uProjectionMatrix"),
+                        1, false, value_ptr(proj));
+    glUniformMatrix4fv(glGetUniformLocation(leafShader, "uViewMatrix"),
+                        1, false, value_ptr(view));
+
+    glActiveTexture(GL_TEXTURE16);
+    glBindTexture(GL_TEXTURE_2D, leafTexture);
+    glUniform1i(glGetUniformLocation(leafShader, "uLeafTexture"), 16);
+
+    // Enable blending and disable backface culling for leaves and store previous state
+    GLboolean blendEnabled;
+    GLboolean cullFaceEnabled;
+    glGetBooleanv(GL_BLEND, &blendEnabled);
+    glGetBooleanv(GL_CULL_FACE, &cullFaceEnabled);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Disable backface culling for double-sided leaves
+    glDisable(GL_CULL_FACE);
+
+    // Draw all leaf instances
+    glBindVertexArray(leafMesh.vao);
+    glDrawElementsInstanced(GL_TRIANGLES,
+                           leafMesh.index_count,
+                           GL_UNSIGNED_INT,
+                           0,
+                           leafTransforms.size());
+    glBindVertexArray(0);
+
+    // Restore previous state
+    if (!blendEnabled) glDisable(GL_BLEND);
+    if (cullFaceEnabled) glEnable(GL_CULL_FACE);
 }
 
 void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& lightColor) {
@@ -211,4 +383,7 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDi
                            0,
                            treeTransforms.size());
     glBindVertexArray(0);
+
+    // Draw leaves after trees
+    drawLeaves(view, proj);
 }
