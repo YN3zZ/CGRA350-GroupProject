@@ -62,8 +62,10 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Create water model
     m_water = Water();
     m_water.shader = waterShader;
+    // Make the terrain and water have the same resolution
+    m_water.meshResolution = m_terrain.meshResolution; 
     m_water.createMesh();
-
+   
     // Initialize trees with bark shader
     m_trees.shader = bark_shader;
     m_trees.loadTextures();
@@ -87,6 +89,8 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 }
 
 
+
+bool newCamera = true;
 void Application::render() {
 	
 	// retrieve the window hieght
@@ -112,6 +116,30 @@ void Application::render() {
 		* rotate(mat4(1), m_pitch, vec3(1, 0, 0))
 		* rotate(mat4(1), m_yaw,   vec3(0, 1, 0));
 
+    if (newCamera) {
+        view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+            * rotate(mat4(1), m_yaw, vec3(0, 1, 0))
+            * translate(mat4(1), -cameraPosition);
+
+        float cameraSpeed = 0.05f;
+        float angle = -m_yaw;
+        vec3 forward = vec3(-sin(angle), 0.0f, -cos(angle));
+        vec3 up(0.0f, 1.0f, 0.0f);
+        vec3 right = vec3(cos(angle), 0.0f, -sin(angle));
+
+        vec3 cameraMove(0.0f);
+        if (wPressed) cameraMove += forward;
+        if (sPressed) cameraMove -= forward;
+        if (dPressed) cameraMove += right;
+        if (aPressed) cameraMove -= right;
+        if (spacePressed) cameraMove += up;
+        if (shiftPressed) cameraMove -= up;
+
+        // Opposing directions cancel out and normalise makes diagonal the same speed as straight.
+        if (cameraMove != vec3(0.0f)) {
+            cameraPosition += cameraMove * cameraSpeed;
+        }
+    }
 
 	// helpful draw options
 	if (m_show_grid) drawGrid(view, proj);
@@ -283,7 +311,25 @@ void Application::scrollCallback(double xoffset, double yoffset) {
 
 
 void Application::keyCallback(int key, int scancode, int action, int mods) {
-	(void)key, (void)scancode, (void)action, (void)mods; // currently un-used
+    // Pressed is 1, released is 0. Cast to bool for moving each frame.
+    if (key == GLFW_KEY_W) {
+        wPressed = (bool)action; 
+    }
+    else if (key == GLFW_KEY_A) {
+        aPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_S) {
+        sPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_D) {
+        dPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_LEFT_SHIFT) {
+        shiftPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_SPACE) {
+        spacePressed = (bool)action;
+    }
 }
 
 
