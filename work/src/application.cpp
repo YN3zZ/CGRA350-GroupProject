@@ -95,8 +95,10 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Create water model
     m_water = Water();
     m_water.shader = waterShader;
+    // Make the terrain and water have the same resolution
+    m_water.meshResolution = m_terrain.meshResolution; 
     m_water.createMesh();
-
+   
     // Initialize trees with bark shader
     m_trees.shader = bark_shader;
     m_trees.loadTextures();
@@ -216,10 +218,36 @@ void Application::render() {
 	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 	// view matrix
-	mat4 view = translate(mat4(1), vec3(0, 0, -m_distance))
-		* rotate(mat4(1), m_pitch, vec3(1, 0, 0))
-		* rotate(mat4(1), m_yaw,   vec3(0, 1, 0));
+    mat4 view;
+    if (firstPersonCamera) {
+        view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+            * rotate(mat4(1), m_yaw, vec3(0, 1, 0))
+            * translate(mat4(1), -cameraPosition);
 
+        float angle = -m_yaw;
+        vec3 forward = vec3(-sin(angle), 0.0f, -cos(angle));
+        vec3 up(0.0f, 1.0f, 0.0f);
+        vec3 right = vec3(cos(angle), 0.0f, -sin(angle));
+
+        // Add the key movement together to allow diagonal movement.
+        vec3 cameraMove(0.0f);
+        if (wPressed) cameraMove += forward;
+        if (sPressed) cameraMove -= forward;
+        if (dPressed) cameraMove += right;
+        if (aPressed) cameraMove -= right;
+        if (spacePressed) cameraMove += up;
+        if (shiftPressed) cameraMove -= up;
+
+        // Opposing directions cancel out and normalise makes diagonal movement the same speed as straight.
+        if (length(cameraMove) > 0) {
+            cameraPosition += normalize(cameraMove) * cameraSpeed;
+        }
+    }
+    else { // Old camera focused on a single point.
+        view = translate(mat4(1), vec3(0, 0, -m_distance))
+            * rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+            * rotate(mat4(1), m_yaw, vec3(0, 1, 0));
+    }
 
 	// helpful draw options
 	if (m_show_grid) drawGrid(view, proj);
@@ -262,6 +290,8 @@ void Application::renderGUI() {
     ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
     ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
     ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
+    ImGui::Checkbox("First person camera", &firstPersonCamera);
+    ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.01f, 0.2f, "%.2f", 2.0f);
 
     // helpful drawing options
     ImGui::Checkbox("Show axis", &m_show_axis);
@@ -421,7 +451,25 @@ void Application::scrollCallback(double xoffset, double yoffset) {
 
 
 void Application::keyCallback(int key, int scancode, int action, int mods) {
-	(void)key, (void)scancode, (void)action, (void)mods; // currently un-used
+    // Pressed is 1, released is 0. Cast to bool for moving each frame.
+    if (key == GLFW_KEY_W) {
+        wPressed = (bool)action; 
+    }
+    else if (key == GLFW_KEY_A) {
+        aPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_S) {
+        sPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_D) {
+        dPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_LEFT_SHIFT) {
+        shiftPressed = (bool)action;
+    }
+    else if (key == GLFW_KEY_SPACE) {
+        spacePressed = (bool)action;
+    }
 }
 
 
