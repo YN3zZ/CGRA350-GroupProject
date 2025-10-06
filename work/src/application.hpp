@@ -66,6 +66,12 @@ private:
 	float cameraSpeed = 0.05f;
 	bool firstPersonCamera = true;
 	
+	// skybox
+	GLuint skyboxShader = 0;
+	GLuint skyboxTexture = 0;
+	cgra::gl_mesh skyboxMesh;
+
+  
 public:
 	// setup
 	Application(GLFWwindow *);
