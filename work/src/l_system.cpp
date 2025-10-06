@@ -33,32 +33,53 @@ string LSystem::generateString() {
     return current;
 }
 
-gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
+gl_mesh LSystem::generateTreeMesh(const string& lSystemString, vector<vec3>& outEndNodes, vector<vec3>& outEndDirections) {
     mesh_builder mb;
-    
+
     struct TurtleStateWithRadius {
         TurtleState turtle;
         float radius;
     };
-    
+
     stack<TurtleStateWithRadius> stateStack;
-    
+
     TurtleState turtle;
     turtle.position = vec3(0, 0, 0);
     turtle.direction = vec3(0, 1, 0);
     turtle.rotation = mat4(1.0f);
-    
+
     unsigned int vertexIndex = 0;
     float currentRadius = 0.1f;
     const float MIN_RADIUS = 0.001f;
     bool nextIsNewBranch = false;
-    
-    for (char c : lSystemString) {
+
+    // Track if this is an end node, meaning no forward movement after this position
+    bool isEndNode = false;
+
+    for (size_t i = 0; i < lSystemString.length(); i++) {
+        char c = lSystemString[i];
+
+        // Check if next character is 'F'
+        bool nextIsForward = (i + 1 < lSystemString.length() && lSystemString[i + 1] == 'F');
+
+        // Check if we're at a branch end (inside brackets with no more F before ])
+        if (c == 'F') {
+            isEndNode = true;
+            for (size_t j = i + 1; j < lSystemString.length(); j++) {
+                if (lSystemString[j] == 'F') {
+                    isEndNode = false;
+                    break;
+                } else if (lSystemString[j] == ']') {
+                    break;
+                }
+            }
+        }
+
         switch (c) {
             case 'F': {
                 vec3 startPos = turtle.position;
                 vec3 endPos = turtle.position + turtle.direction * stepLength;
-                
+
                 if (nextIsNewBranch) {
                     // Add a small tapered section as transition
                     vec3 collarEnd = startPos + turtle.direction * (stepLength * 0.15f);
@@ -66,14 +87,21 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString) {
                     startPos = collarEnd; // Start the branch from end of collar
                     nextIsNewBranch = false;
                 }
-                
+
                 float endRadius = std::max(MIN_RADIUS, currentRadius * branchTaper);
                 if (currentRadius >= MIN_RADIUS) {
                     addCylinder(mb, startPos, endPos, currentRadius, endRadius, vertexIndex);
                 }
-                
+
                 turtle.position = endPos;
                 currentRadius = endRadius;
+
+                // If this is an end node, record the position and direction for leaf placement
+                if (isEndNode) {
+                    outEndNodes.push_back(endPos);
+                    outEndDirections.push_back(normalize(turtle.direction));
+                }
+
                 break;
             }
             case '+': {
