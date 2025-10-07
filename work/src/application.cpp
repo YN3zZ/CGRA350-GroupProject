@@ -96,9 +96,9 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     m_water = Water();
     m_water.shader = waterShader;
     // Make the terrain and water have the same resolution
-    m_water.meshResolution = m_terrain.meshResolution; 
+    m_water.meshResolution = m_terrain.meshResolution;
     m_water.createMesh();
-   
+
     // Initialize trees with bark shader
     m_trees.shader = bark_shader;
     m_trees.loadTextures();
@@ -184,6 +184,15 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     }
     skyboxMesh = mb_skybox.build();
 
+    // Build sun shader
+    shader_builder sb_sun;
+    sb_sun.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//sun_vert.glsl"));
+    sb_sun.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//sun_frag.glsl"));
+    m_sunShader = sb_sun.build();
+
+    // Initialize light direction from sun
+    updateLightFromSun();
+
     // Change UI Style
     ImGuiStyle &style = ImGui::GetStyle();
     // Red button, white text, red background
@@ -198,21 +207,24 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
 
 void Application::render() {
-	
+
 	// retrieve the window hieght
 	int width, height;
-	glfwGetFramebufferSize(m_window, &width, &height); 
+	glfwGetFramebufferSize(m_window, &width, &height);
 
 	m_windowsize = vec2(width, height); // update window size
 	glViewport(0, 0, width, height); // set the viewport to draw to the entire window
 
 	// clear the back-buffer
 	glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// enable flags for normal/forward rendering
-	glEnable(GL_DEPTH_TEST); 
+	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CW);
 
 	// projection matrix
 	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
@@ -254,6 +266,11 @@ void Application::render() {
 	if (m_show_axis) drawAxis(view, proj);
 	glPolygonMode(GL_FRONT_AND_BACK, (m_showWireframe) ? GL_LINE : GL_FILL);
 
+	// Calculate light color based on sun elevation
+	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
+	vec3 baseLightColor = m_terrain.lightColor;
+	m_terrain.lightColor *= sunVisibility;
+
 	// draw the model
 	m_terrain.draw(view, proj);
 
@@ -263,6 +280,32 @@ void Application::render() {
     // Draw water with lighting from terrain.
     m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
 
+	// Draw sun 
+	glDepthFunc(GL_LEQUAL);
+	glUseProgram(m_sunShader);
+
+	// Calculate sun position
+	float azimuthRad = radians(m_sunAzimuth);
+	float elevationRad = radians(m_sunElevation);
+	vec3 sunPosition;
+	sunPosition.x = m_sunDistance * cos(elevationRad) * cos(azimuthRad);
+	sunPosition.y = m_sunDistance * sin(elevationRad);
+	sunPosition.z = m_sunDistance * cos(elevationRad) * sin(azimuthRad);
+
+	// Create model matrix (translate to sun position, scale sphere)
+	mat4 sunModel = translate(mat4(1), sunPosition) * scale(mat4(1), vec3(10.0f));
+	mat4 sunMV = view * sunModel;
+
+	glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uModelViewMatrix"), 1, false, value_ptr(sunMV));
+	glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uProjectionMatrix"), 1, false, value_ptr(proj));
+	glUniform3fv(glGetUniformLocation(m_sunShader, "uSunColor"), 1, value_ptr(m_terrain.lightColor));
+	glUniform1f(glGetUniformLocation(m_sunShader, "uIntensity"), m_sunIntensity);
+
+	cgra::drawSphere();
+	glDepthFunc(GL_LESS);
+
+	m_terrain.lightColor = baseLightColor;
+
 	// Draw skybox as last
 	glDepthMask(GL_FALSE);
 	glDepthFunc(GL_LEQUAL);
@@ -270,6 +313,25 @@ void Application::render() {
 	mat4 skyboxView = mat4(mat3(view));
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "view"), 1, false, value_ptr(skyboxView));
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "projection"), 1, false, value_ptr(proj));
+
+	// Darken skybox as sun goes down
+	vec3 skyColor = getSkyColor(m_sunElevation);
+	float atmosphereBlend;
+
+	if (m_sunElevation > 0.0f) {
+		// Day
+		atmosphereBlend = 0.0f;
+	} else if (m_sunElevation > -20.0f) {
+		// Sunset to night
+		atmosphereBlend = smoothstep(0.0f, -20.0f, m_sunElevation);
+	} else {
+		// Night
+		atmosphereBlend = 1.0f;
+	}
+
+	glUniform3fv(glGetUniformLocation(skyboxShader, "atmosphereColor"), 1, value_ptr(skyColor));
+	glUniform1f(glGetUniformLocation(skyboxShader, "atmosphereBlend"), atmosphereBlend);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
 	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
@@ -320,9 +382,18 @@ void Application::renderGUI() {
         m_water.meshResolution = m_terrain.meshResolution;
     }
 	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 0.1f, 5.0f, "%.1f");
+
 	ImGui::Separator();
-	ImGui::SliderFloat3("Light Color", value_ptr(m_terrain.lightColor), 0.0f, 1.0f);
-	ImGui::SliderFloat("Light Angle", &m_terrain.lightDirection.x, -1.0f, 1.0f);
+	ImGui::Text("Sun & Lighting");
+	if (ImGui::SliderFloat("Sun Azimuth", &m_sunAzimuth, 0.0f, 360.0f, "%.1f°")) {
+		updateLightFromSun();
+	}
+	if (ImGui::SliderFloat("Sun Elevation", &m_sunElevation, -90.0f, 90.0f, "%.1f°")) {
+		updateLightFromSun();
+	}
+	if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
+		updateLightFromSun();
+	}
     // L-System parameters that affect mesh generation
     bool meshNeedsUpdate = false;
 
@@ -330,7 +401,7 @@ void Application::renderGUI() {
     ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
     ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
-    
+
     // Generates the mesh and shaders for terrain and water.
     if (ImGui::Button("Generate")) {
         meshNeedsUpdate = true;
@@ -475,4 +546,84 @@ void Application::keyCallback(int key, int scancode, int action, int mods) {
 
 void Application::charCallback(unsigned int c) {
 	(void)c; // currently un-used
+}
+
+
+vec3 Application::getSunColor(float elevation) {
+	// Sun color transitions based on elevation angle
+	// Daytime (above 15°): White/yellow (1.0, 1.0, 0.95)
+	// Sunrise/Sunset (15° to -5°): Orange to deep red
+	// Night (below -5°): Black
+    // Maybe add GUI params for controlling these colors?
+
+	if (elevation > 15.0f) {
+		// Full daylight
+		return vec3(1.0f, 1.0f, 0.95f);
+	}
+	else if (elevation > 5.0f) {
+		// Blend to warm yellow
+		float t = smoothstep(5.0f, 15.0f, elevation);
+		vec3 warmYellow = vec3(1.0f, 0.95f, 0.8f);
+		vec3 dayWhite = vec3(1.0f, 1.0f, 0.95f);
+		return mix(warmYellow, dayWhite, t);
+	}
+	else if (elevation > -2.0f) {
+		// Sunset/sunrise
+		float t = smoothstep(-2.0f, 5.0f, elevation);
+		vec3 deepOrange = vec3(1.0f, 0.4f, 0.1f);
+		vec3 warmYellow = vec3(1.0f, 0.95f, 0.8f);
+		return mix(deepOrange, warmYellow, t);
+	}
+	else if (elevation > -10.0f) {
+		// Deep red to black
+		float t = smoothstep(-10.0f, -2.0f, elevation);
+		vec3 black = vec3(0.0f, 0.0f, 0.0f);
+		vec3 deepRed = vec3(0.8f, 0.2f, 0.0f);
+		return mix(black, deepRed, t);
+	}
+	else {
+		// Night
+		return vec3(0.0f, 0.0f, 0.0f);
+	}
+}
+
+vec3 Application::getSkyColor(float elevation) {
+	// Sky color transitions based on sun elevation
+	// Simply darken from day blue to night black
+
+	if (elevation > 0.0f) {
+		// Daytime
+		float brightness = smoothstep(0.0f, 30.0f, elevation);
+		vec3 daySky = vec3(0.53f, 0.81f, 0.92f);
+		vec3 eveningSky = vec3(0.3f, 0.5f, 0.7f);
+		return mix(eveningSky, daySky, brightness);
+	}
+	else if (elevation > -20.0f) {
+		// Sunset to night
+		float t = smoothstep(-20.0f, 0.0f, elevation);
+		vec3 nightSky = vec3(0.02f, 0.02f, 0.08f);
+        vec3 eveningSky = vec3(0.3f, 0.5f, 0.7f);
+		return mix(nightSky, eveningSky, t);
+	}
+	else {
+		// Night dark blue
+		return vec3(0.02f, 0.02f, 0.08f);
+	}
+}
+
+void Application::updateLightFromSun() {
+	// Convert angles from degrees to radians
+	float azimuthRad = radians(m_sunAzimuth);
+	float elevationRad = radians(m_sunElevation);
+
+	// Calculate sun position in spherical coordinates (normalized direction from origin to sun)
+	vec3 sunDirection;
+	sunDirection.x = cos(elevationRad) * cos(azimuthRad);
+	sunDirection.y = sin(elevationRad);
+	sunDirection.z = cos(elevationRad) * sin(azimuthRad);
+
+	m_terrain.lightDirection = -normalize(sunDirection);
+
+	// Update light color based on sun elevation and apply intensity
+	m_terrain.lightColor = getSunColor(m_sunElevation) * m_sunIntensity;
 }
