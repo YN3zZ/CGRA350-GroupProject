@@ -17,6 +17,8 @@ uniform mat4 uViewMatrix;
 
 // Output to fragment shader
 out vec2 vTexCoord;
+out vec3 vNormal;
+out vec3 vWorldPos;
 
 void main() {
     // Reconstruct instance matrix from 4 vec4s
@@ -29,6 +31,11 @@ void main() {
 
     // Transform to world space using instance matrix
     vec4 worldPos = instanceMatrix * vec4(aPosition, 1.0);
+    vWorldPos = worldPos.xyz;
+
+    // Transform normal to world space
+    mat3 normalMatrix = mat3(transpose(inverse(instanceMatrix)));
+    vNormal = normalize(normalMatrix * aNormal);
 
     vTexCoord = aTexCoord;
 
