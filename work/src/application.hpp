@@ -71,7 +71,18 @@ private:
 	GLuint skyboxTexture = 0;
 	cgra::gl_mesh skyboxMesh;
 
-  
+	// sun
+	GLuint m_sunShader = 0;
+	float m_sunIntensity = 1.5f;
+	float m_sunAzimuth = 0.0f;
+	float m_sunElevation = 30.0f;
+	float m_sunDistance = 500.0f;
+
+	// Helper functions
+	void updateLightFromSun();
+	glm::vec3 getSunColor(float elevation);
+	glm::vec3 getSkyColor(float elevation);
+
 public:
 	// setup
 	Application(GLFWwindow *);
