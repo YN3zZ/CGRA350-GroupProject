@@ -84,7 +84,8 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 
 	// Lighting params
-	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirection));
+	vec3 lightDirViewSpace = mat3(view) * lightDirection;
+	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirViewSpace));
 	glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
