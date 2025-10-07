@@ -289,7 +289,7 @@ void TreeGenerator::setTreeType(int type) {
     needsMeshRegeneration = true;
 }
 
-void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj) {
+void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& lightColor) {
     if (leafTransforms.empty() || !renderLeaves || leafShader == 0) return;
 
     glUseProgram(leafShader);
@@ -298,6 +298,15 @@ void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj) {
                         1, false, value_ptr(proj));
     glUniformMatrix4fv(glGetUniformLocation(leafShader, "uViewMatrix"),
                         1, false, value_ptr(view));
+
+    // Compute camera position from view matrix
+    mat4 invView = inverse(view);
+    vec3 viewPos = vec3(invView[3]);
+
+    // Set lighting uniforms
+    glUniform3fv(glGetUniformLocation(leafShader, "uLightDir"), 1, value_ptr(lightDir));
+    glUniform3fv(glGetUniformLocation(leafShader, "lightColor"), 1, value_ptr(lightColor));
+    glUniform3fv(glGetUniformLocation(leafShader, "uViewPos"), 1, value_ptr(viewPos));
 
     glActiveTexture(GL_TEXTURE16);
     glBindTexture(GL_TEXTURE_2D, leafTexture);
@@ -385,5 +394,5 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDi
     glBindVertexArray(0);
 
     // Draw leaves after trees
-    drawLeaves(view, proj);
+    drawLeaves(view, proj, lightDir, lightColor);
 }
