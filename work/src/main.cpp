@@ -56,7 +56,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 
 	// create a windowed mode window and its OpenGL context
-	GLFWwindow *window = glfwCreateWindow(800, 600, "NodeForge", nullptr, nullptr);
+	GLFWwindow *window = glfwCreateWindow(800, 600, "Terra Nova", nullptr, nullptr);
 	if (!window) {
 		cerr << "Error: Could not create GLFW window" << endl;
 		abort(); // unrecoverable error
