@@ -5,7 +5,7 @@ uniform vec3 uLightDir;
 uniform vec3 lightColor;
 uniform vec3 uViewPos;
 // Shadow mapping
-uniform sampler2D uShadowMap;
+uniform sampler2DShadow uShadowMap;
 uniform bool uEnableShadows;
 uniform bool uUsePCF;
 
@@ -29,7 +29,7 @@ float microfacet(float NdotH, float VdotH, float NdotV_L) {
 }
 
 float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
-	// Perform perspective divide (already in [0,1] range due to bias matrix)
+	// Perform perspective divide
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 
 	// Transform from NDC [-1,1] to texture coordinates [0,1]
@@ -40,13 +40,8 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		return 1.0;
 	}
 
-	// Get current depth
-	float currentDepth = projCoords.z;
-
-	float bias = 0.0;
-
 	if (uUsePCF) {
-		// Improved PCF with adaptive spacing
+		// Improved PCF with adaptive spacing and hardware depth comparison
 		float shadow = 0.0;
 		vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
 
@@ -60,8 +55,8 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		for (int x = -pcfSize; x <= pcfSize; ++x) {
 			for (int y = -pcfSize; y <= pcfSize; ++y) {
 				vec2 offset = projCoords.xy + vec2(x, y) * spacing * texelSize;
-				float pcfDepth = texture(uShadowMap, offset).r;
-				shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;
+				// Hardware depth comparison: returns 1.0 if lit, 0.0 if shadowed
+				shadow += texture(uShadowMap, vec3(offset, projCoords.z));
 			}
 		}
 
@@ -71,9 +66,8 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		// Map [0,1] to [0.5,1], shadows never fully black
 		return clamp(shadow * 0.5 + 0.5, 0.5, 1.0);
 	} else {
-		// Hard shadows
-		float closestDepth = texture(uShadowMap, projCoords.xy).r;
-		return currentDepth - bias > closestDepth ? 0.0 : 1.0;
+		// Hard shadows with hardware depth comparison
+		return texture(uShadowMap, projCoords);
 	}
 }
 
