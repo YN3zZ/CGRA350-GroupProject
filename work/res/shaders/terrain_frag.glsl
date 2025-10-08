@@ -12,9 +12,13 @@ uniform bool useOrenNayar;
 // Texture mapping.
 uniform vec2 heightRange;
 uniform float textureScale;
-uniform sampler2D uTextures[8]; // Up to 8 textures.
-uniform sampler2D uNormalMaps[8]; // Up to 8 normals.
-uniform int numTextures; // How many have been set out of 8.
+uniform sampler2D uTextures[4]; // Up to 4 textures.
+uniform sampler2D uNormalMaps[4]; // Up to 4 normals.
+uniform int numTextures; // How many have been set out of 4.
+// Shadow mapping.
+uniform sampler2D uShadowMap;
+uniform bool uEnableShadows;
+uniform bool uUsePCF;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -25,6 +29,7 @@ in VertexData {
 	vec2 textureCoord;
 	vec3 tangent; // Tangent and bitangent for normal mapping.
 	vec3 bitangent;
+	vec4 lightSpacePos;
 } f_in;
 
 // framebuffer output
@@ -83,6 +88,44 @@ vec3 calculateNormal(vec3 normalMap) {
 	// Transform the normal from tangent space to view space
 	vec3 perturbedNormal = normalize(TBN * normalTangentSpace);
 	return perturbedNormal;
+}
+
+
+float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
+	// Perform perspective divide
+	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+
+	// Transform to [0,1] range
+	projCoords = projCoords * 0.5 + 0.5;
+
+	// Outside shadow map bounds = no shadow
+	if (projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+		return 1.0;
+	}
+
+	// Get depth from light's perspective
+	float currentDepth = projCoords.z;
+
+	// Hardcoded bias to 0
+	float bias = 0.0;
+
+	if (uUsePCF) {
+		// PCF: 3x3 kernel soft shadows
+		float shadow = 0.0;
+		vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
+		for (int x = -1; x <= 1; ++x) {
+			for (int y = -1; y <= 1; ++y) {
+				float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+				shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;
+			}
+		}
+		shadow /= 9.0;
+		return shadow;
+	} else {
+		// Hard shadows
+		float closestDepth = texture(uShadowMap, projCoords.xy).r;
+		return currentDepth - bias > closestDepth ? 0.0 : 1.0;
+	}
 }
 
 
@@ -162,9 +205,15 @@ void main() {
 	vec3 kd = (2.0f - schlick) * (1.0f - metallic);
 	// The diffuse uses the object color evenly scattered in all directions (using PI).
 	vec3 diffuse = kd * (textureColor / PI) * diffuseFactor;
-	
-	// Add ambient light to diffuse and specular.
-	vec3 finalColor = ambient + diffuse + specular;
+
+	// Calculate shadow visibility with slope-based bias
+	float shadow = 1.0;
+	if (uEnableShadows) {
+		shadow = calculateShadow(f_in.lightSpacePos, normDir, lightDir);
+	}
+
+	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
+	vec3 finalColor = ambient + shadow * (diffuse + specular);
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
 	fb_color = vec4(finalColor, 1.0f);
