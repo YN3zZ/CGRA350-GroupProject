@@ -3,6 +3,7 @@
 // uniform data
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
+uniform mat4 uLightSpaceMatrix;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -17,6 +18,7 @@ out VertexData {
 	vec2 textureCoord;
     vec3 tangent; // "Tangent vectors" required for normal mapping.
     vec3 bitangent; // Part of TBN matrix structure mentioned in lecture.
+	vec4 lightSpacePos;
 } v_out;
 
 void main() {
@@ -38,6 +40,9 @@ void main() {
     // lecture: "Consider using a (tangent, bitangent and normal) TBN matrix structure for transformations"
     v_out.tangent = normalize((uModelViewMatrix * vec4(tangent, 0.0)).xyz);
     v_out.bitangent = normalize((uModelViewMatrix * vec4(bitangent, 0.0)).xyz);
+
+	// Calculate light space position for shadow mapping
+	v_out.lightSpacePos = uLightSpaceMatrix * vec4(aPosition, 1.0);
 
     // Set the screenspace position (needed for converting to fragment data)
     gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0f);

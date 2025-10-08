@@ -9,12 +9,17 @@ uniform vec3 uLightDir;
 uniform vec3 lightColor;
 uniform vec3 uViewPos;
 uniform bool uUseTextures;
+// Shadow mapping
+uniform sampler2D uShadowMap;
+uniform bool uEnableShadows;
+uniform bool uUsePCF;
 
 in VertexData {
     vec3 worldPos;
     vec3 normal;
     vec2 texCoord;
     mat3 TBN;
+	vec4 lightSpacePos;
 } f_in;
 
 out vec4 fb_color;
@@ -25,6 +30,43 @@ const float PI = 3.14159265358979f;
 float microfacet(float NdotH, float VdotH, float NdotV_L) {
     // NdotV_L is the dot product of normDir with either viewDir or lightDir.
     return clamp((2.0 * NdotH * NdotV_L) / VdotH, 0.0f, 1.0f);
+}
+
+float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
+	// Perform perspective divide
+	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+
+	// Transform to [0,1] range
+	projCoords = projCoords * 0.5 + 0.5;
+
+	// Outside shadow map bounds = no shadow
+	if (projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+		return 1.0;
+	}
+
+	// Get depth from light's perspective
+	float currentDepth = projCoords.z;
+
+	// Hardcoded bias to 0
+	float bias = 0.0;
+
+	if (uUsePCF) {
+		// PCF: 3x3 kernel soft shadows
+		float shadow = 0.0;
+		vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
+		for (int x = -1; x <= 1; ++x) {
+			for (int y = -1; y <= 1; ++y) {
+				float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+				shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;
+			}
+		}
+		shadow /= 9.0;
+		return shadow;
+	} else {
+		// Hard shadows
+		float closestDepth = texture(uShadowMap, projCoords.xy).r;
+		return currentDepth - bias > closestDepth ? 0.0 : 1.0;
+	}
 }
 
 void main() {
@@ -78,8 +120,14 @@ void main() {
     vec3 kd = (2.0f - schlick) * (1.0f - metallic);
     vec3 diffuse = kd * (albedo / PI) * NdotL;
 
-    // Combine lighting components
-    vec3 finalColor = ambient + diffuse + specular;
+	// Calculate shadow visibility with slope-based bias
+	float shadow = 1.0;
+	if (uEnableShadows) {
+		shadow = calculateShadow(f_in.lightSpacePos, normal, lightDir);
+	}
+
+    // Combine lighting components, applying shadow to diffuse and specular only
+    vec3 finalColor = ambient + shadow * (diffuse + specular);
     finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f));
 
     fb_color = vec4(finalColor, 1.0);
