@@ -14,11 +14,13 @@ layout(location = 6) in vec4 aInstanceMatrix3;
 // Uniforms
 uniform mat4 uProjectionMatrix;
 uniform mat4 uViewMatrix;
+uniform mat4 uLightSpaceMatrix;
 
 // Output to fragment shader
 out vec2 vTexCoord;
 out vec3 vNormal;
 out vec3 vWorldPos;
+out vec4 vLightSpacePos;
 
 void main() {
     // Reconstruct instance matrix from 4 vec4s
@@ -38,6 +40,9 @@ void main() {
     vNormal = normalize(normalMatrix * aNormal);
 
     vTexCoord = aTexCoord;
+
+	// Calculate light space position for shadow mapping
+	vLightSpacePos = uLightSpaceMatrix * worldPos;
 
     // Final position
     gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
