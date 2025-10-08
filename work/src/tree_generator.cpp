@@ -282,7 +282,7 @@ void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj,
 
     // Shadow params
     glUniformMatrix4fv(glGetUniformLocation(leafShader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
-    glUniform1i(glGetUniformLocation(leafShader, "uShadowMap"), 11);
+    glUniform1i(glGetUniformLocation(leafShader, "uShadowMap"), 20);
     glUniform1i(glGetUniformLocation(leafShader, "uEnableShadows"), enableShadows ? 1 : 0);
     glUniform1i(glGetUniformLocation(leafShader, "uUsePCF"), usePCF ? 1 : 0);
 
@@ -353,7 +353,7 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj,
 
     // Shadow params
     glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
-    glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 11);
+    glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 20);
     glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
     glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
 
