@@ -225,6 +225,10 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
+    // Enable shadow comparison mode for sampler2DShadow
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                            GL_TEXTURE_2D, m_shadow_map_texture, 0);
 
@@ -321,7 +325,7 @@ void Application::render() {
 	// Calculate light space matrix for shadow mapping
 	mat4 lightSpaceMatrix = getLightSpaceMatrix();
 
-	glActiveTexture(GL_TEXTURE11);
+	glActiveTexture(GL_TEXTURE20);
 	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 	// draw the model
@@ -483,6 +487,10 @@ void Application::renderGUI() {
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+				// Enable shadow comparison mode for sampler2DShadow
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
 				// Restore previous active texture unit
 				glActiveTexture(currentTexture);
