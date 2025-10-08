@@ -14,7 +14,6 @@ public:
     float maxTreeScale = 1.0f;
     bool randomRotation = true;
     float branchTaper = 0.65f;
-    int cylinderSides = 12;
 
     // Rendering
     GLuint shader = 0;
@@ -28,8 +27,6 @@ public:
     GLuint leafTexture = 0;
     float leafSize = 0.4f;
     bool renderLeaves = true;
-    float leafTiltAmount = 0.3f;   // Multiplier for tilt rotation (0-1)
-    float leafRollAmount = 0.3f;   // Multiplier for roll rotation (0-1)
 
     TreeGenerator() = default;
     ~TreeGenerator();  // Need clean up OpenGL resources
@@ -57,6 +54,9 @@ public:
     cgra::gl_mesh treeMesh;
     std::vector<glm::mat4> treeTransforms;
 
+    cgra::gl_mesh leafMesh;
+    std::vector<glm::mat4> leafTransforms;
+
 private:
     GLuint instanceVBO = 0;
     bool needsMeshRegeneration = true;
@@ -64,8 +64,6 @@ private:
     // Leaf data
     std::vector<glm::vec3> baseLeafPositions;   // End nodes from single tree
     std::vector<glm::vec3> baseLeafDirections;  // Branch directions at end nodes
-    std::vector<glm::mat4> leafTransforms;      // Transforms for all leaf instances
-    cgra::gl_mesh leafMesh;
     GLuint leafInstanceVBO = 0;
     GLuint leafShader = 0;
 

@@ -461,6 +461,11 @@ void Application::renderGUI() {
 			if (newSize != m_shadow_map_size) {
 				m_shadow_map_size = newSize;
 				// Recreate shadow map texture with new size
+				// to make sure we're not interfering with any active texture units
+				GLint currentTexture;
+				glGetIntegerv(GL_ACTIVE_TEXTURE, &currentTexture);
+
+				glActiveTexture(GL_TEXTURE11);
 				glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_shadow_map_size, m_shadow_map_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -469,7 +474,9 @@ void Application::renderGUI() {
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-				glBindTexture(GL_TEXTURE_2D, 0);
+
+				// Restore previous active texture unit
+				glActiveTexture(currentTexture);
 			}
 		}
 	}
@@ -520,9 +527,6 @@ void Application::renderGUI() {
     if (ImGui::SliderFloat("Branch Taper", &m_trees.branchTaper, 0.5f, 1.0f, "%.2f")) {
         meshNeedsUpdate = true;
     }
-    if (ImGui::SliderInt("Cylinder Sides", &m_trees.cylinderSides, 4, 12)) {
-        meshNeedsUpdate = true;
-    }
     
     // Placement parameters that don't affect mesh
     bool placementNeedsUpdate = false;
@@ -545,12 +549,6 @@ void Application::renderGUI() {
     }
     if (ImGui::SliderFloat("Leaf Size", &m_trees.leafSize, 0.1f, 1.0f, "%.2f")) {
         meshNeedsUpdate = true;
-    }
-    if (ImGui::SliderFloat("Leaf Tilt", &m_trees.leafTiltAmount, 0.0f, 1.0f, "%.2f")) {
-        placementNeedsUpdate = true;
-    }
-    if (ImGui::SliderFloat("Leaf Roll", &m_trees.leafRollAmount, 0.0f, 1.0f, "%.2f")) {
-        placementNeedsUpdate = true;
     }
 
     // Apply updates
@@ -783,6 +781,24 @@ void Application::renderShadowMap() {
 							   0,
 							   m_trees.treeTransforms.size());
 		glBindVertexArray(0);
+	}
+
+	// render leaves
+	if (!m_trees.leafTransforms.empty() && m_trees.renderLeaves) {
+		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uUseInstancing"), 1);
+
+		// Disable culling for leaves
+		glDisable(GL_CULL_FACE);
+
+		glBindVertexArray(m_trees.leafMesh.vao);
+		glDrawElementsInstanced(GL_TRIANGLES,
+							   m_trees.leafMesh.index_count,
+							   GL_UNSIGNED_INT,
+							   0,
+							   m_trees.leafTransforms.size());
+		glBindVertexArray(0);
+
+		glEnable(GL_CULL_FACE);
 	}
 
 	// Restore culling state
