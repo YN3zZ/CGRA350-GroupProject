@@ -193,6 +193,37 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Initialize light direction from sun
     updateLightFromSun();
 
+    // Build shadow depth shader
+    shader_builder sb_shadow;
+    sb_shadow.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_vert.glsl"));
+    sb_shadow.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_frag.glsl"));
+    m_shadow_depth_shader = sb_shadow.build();
+
+    // Create shadow map framebuffer
+    glGenFramebuffers(1, &m_shadow_map_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_shadow_map_fbo);
+
+    // Create depth texture
+    glGenTextures(1, &m_shadow_map_texture);
+    glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
+                 m_shadow_map_size, m_shadow_map_size,
+                 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                           GL_TEXTURE_2D, m_shadow_map_texture, 0);
+
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     // Change UI Style
     ImGuiStyle &style = ImGui::GetStyle();
     // Red button, white text, red background
@@ -207,8 +238,15 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
 
 void Application::render() {
+	// 1st pass, shadow map
+	// Only render shadows when sun is above horizon
+	if (m_enable_shadows && m_sunElevation > -5.0f) {
+		renderShadowMap();
+	}
 
-	// retrieve the window hieght
+	// 2nd pass: main rendering
+
+	// retrieve the window height
 	int width, height;
 	glfwGetFramebufferSize(m_window, &width, &height);
 
@@ -271,14 +309,20 @@ void Application::render() {
 	vec3 baseLightColor = m_terrain.lightColor;
 	m_terrain.lightColor *= sunVisibility;
 
+	// Calculate light space matrix for shadow mapping
+	mat4 lightSpaceMatrix = getLightSpaceMatrix();
+
+	glActiveTexture(GL_TEXTURE11);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+
 	// draw the model
-	m_terrain.draw(view, proj);
+	m_terrain.draw(view, proj, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
 
 	// Draw trees with lighting from terrain.
-	m_trees.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
+	m_trees.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
 
     // Draw water with lighting from terrain.
-    m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor);
+    m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
 
 	// Draw sun 
 	glDepthFunc(GL_LEQUAL);
@@ -394,9 +438,46 @@ void Application::renderGUI() {
 	if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
 		updateLightFromSun();
 	}
+
+	ImGui::Separator();
+	ImGui::Text("Shadow Settings");
+	ImGui::Checkbox("Enable Shadows", &m_enable_shadows);
+	if (m_enable_shadows) {
+		ImGui::Checkbox("Use PCF (Soft Shadows)", &m_use_pcf);
+		const char* shadowMapSizes[] = {"512", "1024", "2048", "4096"};
+		int currentSizeIndex = 3;
+		if (m_shadow_map_size == 512) currentSizeIndex = 0;
+		else if (m_shadow_map_size == 1024) currentSizeIndex = 1;
+		else if (m_shadow_map_size == 2048) currentSizeIndex = 2;
+		else if (m_shadow_map_size == 4096) currentSizeIndex = 3;
+
+		if (ImGui::Combo("Shadow Map Size", &currentSizeIndex, shadowMapSizes, 4)) {
+			int newSize = 2048;
+			if (currentSizeIndex == 0) newSize = 512;
+			else if (currentSizeIndex == 1) newSize = 1024;
+			else if (currentSizeIndex == 2) newSize = 2048;
+			else if (currentSizeIndex == 3) newSize = 4096;
+
+			if (newSize != m_shadow_map_size) {
+				m_shadow_map_size = newSize;
+				// Recreate shadow map texture with new size
+				glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_shadow_map_size, m_shadow_map_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+		}
+	}
+
     // L-System parameters that affect mesh generation
     bool meshNeedsUpdate = false;
 
+	ImGui::Separator();
     ImGui::Text("Water Parameters");
     ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
@@ -626,4 +707,89 @@ void Application::updateLightFromSun() {
 
 	// Update light color based on sun elevation and apply intensity
 	m_terrain.lightColor = getSunColor(m_sunElevation) * m_sunIntensity;
+}
+
+glm::mat4 Application::getLightSpaceMatrix() const {
+	// Calculate sun direction from angles
+	float azimuthRad = radians(m_sunAzimuth);
+	float elevationRad = radians(m_sunElevation);
+
+	vec3 sunDirection;
+	sunDirection.x = cos(elevationRad) * cos(azimuthRad);
+	sunDirection.y = sin(elevationRad);
+	sunDirection.z = cos(elevationRad) * sin(azimuthRad);
+
+	vec3 lightPos = normalize(sunDirection) * 250.0f;
+
+	// Orthographic projection covering the terrain
+	// Adjust size based on sun elevation (larger when sun is low for longer shadows)
+	float elevationFactor = std::max(0.3f, abs(sin(elevationRad)));
+	float orthoSize = m_terrain.meshScale * 1.5f / elevationFactor;
+	mat4 lightProjection = glm::ortho(
+		-orthoSize, orthoSize,
+		-orthoSize, orthoSize,
+		1.0f, 500.0f  // Near/far planes (adjusted for better coverage)
+	);
+
+	// Look from light position toward scene center
+	mat4 lightView = glm::lookAt(
+		lightPos,
+		vec3(0.0f, 0.0f, 0.0f),  // Look at origin
+		vec3(0.0f, 1.0f, 0.0f)   // Up vector
+	);
+
+	return lightProjection * lightView;
+}
+
+void Application::renderShadowMap() {
+	// Save viewport state
+	int viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+
+	// Bind shadow framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, m_shadow_map_fbo);
+	glViewport(0, 0, m_shadow_map_size, m_shadow_map_size);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	// Enable depth testing
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	// Cull front faces to prevent shadow acne
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+
+	// Calculate light space matrix
+	glm::mat4 lightSpaceMatrix = getLightSpaceMatrix();
+
+	// Use shadow depth shader
+	glUseProgram(m_shadow_depth_shader);
+	glUniformMatrix4fv(glGetUniformLocation(m_shadow_depth_shader, "uLightSpaceMatrix"),
+					   1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+
+	// render terrain
+	glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uUseInstancing"), 0);
+	m_terrain.terrain.draw();
+
+	// render trees
+	if (!m_trees.treeTransforms.empty()) {
+		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uUseInstancing"), 1);
+
+		// Bind tree mesh VAO (with instance attributes already set up)
+		glBindVertexArray(m_trees.treeMesh.vao);
+		glDrawElementsInstanced(GL_TRIANGLES,
+							   m_trees.treeMesh.index_count,
+							   GL_UNSIGNED_INT,
+							   0,
+							   m_trees.treeTransforms.size());
+		glBindVertexArray(0);
+	}
+
+	// Restore culling state
+	glCullFace(GL_BACK);
+	glDisable(GL_CULL_FACE);
+
+	// Restore viewport and unbind framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 }
