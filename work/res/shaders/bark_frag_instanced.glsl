@@ -33,10 +33,10 @@ float microfacet(float NdotH, float VdotH, float NdotV_L) {
 }
 
 float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
-	// Perform perspective divide
+	// Perform perspective divide (already in [0,1] range due to bias matrix)
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 
-	// Transform to [0,1] range
+	// Transform from NDC [-1,1] to texture coordinates [0,1]
 	projCoords = projCoords * 0.5 + 0.5;
 
 	// Outside shadow map bounds = no shadow
@@ -44,24 +44,36 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		return 1.0;
 	}
 
-	// Get depth from light's perspective
+	// Get current depth
 	float currentDepth = projCoords.z;
 
-	// Hardcoded bias to 0
 	float bias = 0.0;
 
 	if (uUsePCF) {
-		// PCF: 3x3 kernel soft shadows
+		// Improved PCF with adaptive spacing
 		float shadow = 0.0;
-		vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
-		for (int x = -1; x <= 1; ++x) {
-			for (int y = -1; y <= 1; ++y) {
-				float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+		vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+
+		// Adaptive spacing: tighter at high res, wider at low res
+		float resolution = float(textureSize(uShadowMap, 0).x);
+		float spacing = 10.0 - resolution / 512.0;
+
+		// Variable kernel size (using 1 for 3x3)
+		int pcfSize = 1;
+
+		for (int x = -pcfSize; x <= pcfSize; ++x) {
+			for (int y = -pcfSize; y <= pcfSize; ++y) {
+				vec2 offset = projCoords.xy + vec2(x, y) * spacing * texelSize;
+				float pcfDepth = texture(uShadowMap, offset).r;
 				shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;
 			}
 		}
-		shadow /= 9.0;
-		return shadow;
+
+		int kernelSize = pcfSize * 2 + 1;
+		shadow /= float(kernelSize * kernelSize);
+
+		// Map [0,1] to [0.5,1], shadows never fully black
+		return clamp(shadow * 0.5 + 0.5, 0.5, 1.0);
 	} else {
 		// Hard shadows
 		float closestDepth = texture(uShadowMap, projCoords.xy).r;

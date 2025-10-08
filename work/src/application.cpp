@@ -23,6 +23,15 @@ using namespace cgra;
 using namespace glm;
 
 
+// Bias matrix to transform NDC coordinates [-1,1] to texture coordinates [0,1]
+const glm::mat4 biasMatrix(
+	0.5f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.5f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.5f, 0.0f,
+	0.5f, 0.5f, 0.5f, 1.0f
+);
+
+
 // Helper function to load cubemap textures
 GLuint loadCubemap(const vector<string>& faces) {
     GLuint textureID;
