@@ -46,11 +46,18 @@ public:
     }
     void setTreeType(int type);
     // Draw all trees
-    void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDir = glm::vec3(0, -1, -1), const glm::vec3& lightColor = glm::vec3(1));
-    
-private:
+    void draw(const glm::mat4& view, const glm::mat4& proj,
+              const glm::vec3& lightDir = glm::vec3(0, -1, -1),
+              const glm::vec3& lightColor = glm::vec3(1),
+              const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
+              GLuint shadowMapTexture = 0,
+              bool enableShadows = false,
+              bool usePCF = true);
+
     cgra::gl_mesh treeMesh;
     std::vector<glm::mat4> treeTransforms;
+
+private:
     GLuint instanceVBO = 0;
     bool needsMeshRegeneration = true;
 
@@ -67,5 +74,10 @@ private:
     void regenerateTreeMesh();
     void generateLeafMesh();
     void setupLeafInstancing();
-    void drawLeaves(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDir, const glm::vec3& lightColor);
+    void drawLeaves(const glm::mat4& view, const glm::mat4& proj,
+                    const glm::vec3& lightDir, const glm::vec3& lightColor,
+                    const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
+                    GLuint shadowMapTexture = 0,
+                    bool enableShadows = false,
+                    bool usePCF = true);
 };

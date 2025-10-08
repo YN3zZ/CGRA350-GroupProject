@@ -289,7 +289,12 @@ void TreeGenerator::setTreeType(int type) {
     needsMeshRegeneration = true;
 }
 
-void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& lightColor) {
+void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj,
+                               const vec3& lightDir, const vec3& lightColor,
+                               const mat4& lightSpaceMatrix,
+                               GLuint shadowMapTexture,
+                               bool enableShadows,
+                               bool usePCF) {
     if (leafTransforms.empty() || !renderLeaves || leafShader == 0) return;
 
     glUseProgram(leafShader);
@@ -307,6 +312,12 @@ void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj, const vec3& l
     glUniform3fv(glGetUniformLocation(leafShader, "uLightDir"), 1, value_ptr(lightDir));
     glUniform3fv(glGetUniformLocation(leafShader, "lightColor"), 1, value_ptr(lightColor));
     glUniform3fv(glGetUniformLocation(leafShader, "uViewPos"), 1, value_ptr(viewPos));
+
+    // Shadow params
+    glUniformMatrix4fv(glGetUniformLocation(leafShader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
+    glUniform1i(glGetUniformLocation(leafShader, "uShadowMap"), 11);
+    glUniform1i(glGetUniformLocation(leafShader, "uEnableShadows"), enableShadows ? 1 : 0);
+    glUniform1i(glGetUniformLocation(leafShader, "uUsePCF"), usePCF ? 1 : 0);
 
     glActiveTexture(GL_TEXTURE16);
     glBindTexture(GL_TEXTURE_2D, leafTexture);
@@ -338,7 +349,12 @@ void TreeGenerator::drawLeaves(const mat4& view, const mat4& proj, const vec3& l
     if (cullFaceEnabled) glEnable(GL_CULL_FACE);
 }
 
-void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDir, const vec3& lightColor) {
+void TreeGenerator::draw(const mat4& view, const mat4& proj,
+                         const vec3& lightDir, const vec3& lightColor,
+                         const mat4& lightSpaceMatrix,
+                         GLuint shadowMapTexture,
+                         bool enableShadows,
+                         bool usePCF) {
     if (treeTransforms.empty()) return;
 
     // Ensure mesh is generated
@@ -368,6 +384,12 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDi
 
     glUniform1i(glGetUniformLocation(shader, "uUseTextures"), useTextures ? 1 : 0);
 
+    // Shadow params
+    glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
+    glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 11);
+    glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
+    glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
+
     if (useTextures) {
         // Start from GL_TEXTURE4 to avoid conflicts with terrain textures
         const vector<string> textureUniforms = {
@@ -394,5 +416,5 @@ void TreeGenerator::draw(const mat4& view, const mat4& proj, const vec3& lightDi
     glBindVertexArray(0);
 
     // Draw leaves after trees
-    drawLeaves(view, proj, lightDir, lightColor);
+    drawLeaves(view, proj, lightDir, lightColor, lightSpaceMatrix, shadowMapTexture, enableShadows, usePCF);
 }

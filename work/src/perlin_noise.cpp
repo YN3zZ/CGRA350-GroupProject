@@ -76,7 +76,11 @@ vec2 PerlinNoise::getHeightRange() {
 }
 
 
-void PerlinNoise::draw(const mat4& view, const mat4& proj) {
+void PerlinNoise::draw(const mat4& view, const mat4& proj,
+					   const mat4& lightSpaceMatrix,
+					   GLuint shadowMapTexture,
+					   bool enableShadows,
+					   bool usePCF) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -90,6 +94,12 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+
+	// Shadow params
+	glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
+	glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 11);
+	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
+	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
 
 	// Draw the terrain mesh.
 	terrain.draw();
