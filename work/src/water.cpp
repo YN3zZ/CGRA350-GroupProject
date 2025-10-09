@@ -23,8 +23,10 @@ Water::Water() {
 	string pathStart = CGRA_SRCDIR + string("/res/textures/") + "water";
 	rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
 	rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
+	rgba_image dudvImage = rgba_image(pathStart + string("_dudv.png"));
 	texture = textureImage.uploadTexture();
 	normalMap = normalImage.uploadTexture();
+	dudvMap = dudvImage.uploadTexture();
 
 	// Get starting time for animations to base off.
 	startTime = (float)glfwGetTime();
@@ -109,7 +111,7 @@ void Water::draw(const mat4& view, const mat4& proj,
 	glUniform1i(glGetUniformLocation(shader, "uRefractionTexture"), 25);
 
 	glActiveTexture(GL_TEXTURE26);
-	glBindTexture(GL_TEXTURE_2D, normalMap);
+	glBindTexture(GL_TEXTURE_2D, dudvMap);
 	glUniform1i(glGetUniformLocation(shader, "uDuDvMap"), 26);
 
 	glUniform1i(glGetUniformLocation(shader, "uEnableReflections"), enableReflections ? 1 : 0);
