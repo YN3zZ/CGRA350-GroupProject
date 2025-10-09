@@ -29,7 +29,12 @@ public:
 
 	// Constructor and public methods.
 	Water();
-	void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDirection, const glm::vec3& lightColor);
+	void draw(const glm::mat4& view, const glm::mat4& proj,
+			  const glm::vec3& lightDirection, const glm::vec3& lightColor,
+			  const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
+			  GLuint shadowMapTexture = 0,
+			  bool enableShadows = false,
+			  bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
 };
