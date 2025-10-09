@@ -78,10 +78,20 @@ private:
 	float m_sunElevation = 30.0f;
 	float m_sunDistance = 500.0f;
 
+	// Shadow mapping
+	GLuint m_shadow_map_fbo = 0;
+	GLuint m_shadow_map_texture = 0;
+	GLuint m_shadow_depth_shader = 0;
+	int m_shadow_map_size = 2048;
+	bool m_enable_shadows = true;
+	bool m_use_pcf = true;
+
 	// Helper functions
 	void updateLightFromSun();
 	glm::vec3 getSunColor(float elevation);
 	glm::vec3 getSkyColor(float elevation);
+	void renderShadowMap();
+	glm::mat4 getLightSpaceMatrix() const;
 
 public:
 	// setup

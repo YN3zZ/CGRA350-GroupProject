@@ -55,7 +55,12 @@ void Water::setShaderParams() {
 }
 
 
-void Water::draw(const mat4& view, const mat4& proj, const vec3& lightDirection, const vec3& lightColor) {
+void Water::draw(const mat4& view, const mat4& proj,
+				  const vec3& lightDirection, const vec3& lightColor,
+				  const mat4& lightSpaceMatrix,
+				  GLuint shadowMapTexture,
+				  bool enableShadows,
+				  bool usePCF) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -70,9 +75,24 @@ void Water::draw(const mat4& view, const mat4& proj, const vec3& lightDirection,
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
 	glUniform1f(glGetUniformLocation(shader, "alpha"), waterAlpha);
-	
+
 	float currentTime = (float)glfwGetTime() - startTime;
 	glUniform1f(glGetUniformLocation(shader, "uTime"), currentTime);
+
+	// Re-bind water textures (fix for water texture disappering)
+	glActiveTexture(GL_TEXTURE22);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glActiveTexture(GL_TEXTURE23);
+	glBindTexture(GL_TEXTURE_2D, normalMap);
+
+	// Shadow params
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
+
+	glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
+	glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 20);
+	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
+	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
 
 	// Draw the terrain mesh.
 	waterMesh.draw();
