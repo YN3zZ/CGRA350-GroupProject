@@ -11,6 +11,7 @@ private:
 	cgra::gl_mesh waterMesh;
 	GLuint texture;
 	GLuint normalMap;
+	GLuint dudvMap;
 	float startTime;
 
 public:
