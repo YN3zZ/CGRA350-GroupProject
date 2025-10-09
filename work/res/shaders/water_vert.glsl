@@ -23,6 +23,7 @@ out VertexData{
     vec3 tangent; // "Tangent vectors" required for normal mapping.
     vec3 bitangent; // Part of TBN matrix structure mentioned in lecture.
 	vec4 lightSpacePos;
+	vec4 clipSpace; // Projective texture mapping
 } v_out;
 
 void main() {
@@ -62,4 +63,7 @@ void main() {
 
     // Set the screenspace position (needed for converting to fragment data)
     gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(newPosition, 1.0f);
+
+	// Store clip space position for projective texture mapping in fragment shader
+	v_out.clipSpace = gl_Position;
 }
