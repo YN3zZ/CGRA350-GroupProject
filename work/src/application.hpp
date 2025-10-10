@@ -56,12 +56,6 @@ private:
 	int m_treeType = 3;
 
 	// First person camera movement.
-	bool wPressed = false;
-	bool sPressed = false;
-	bool aPressed = false;
-	bool dPressed = false;
-	bool shiftPressed = false;
-	bool spacePressed = false;
 	glm::vec3 cameraPosition{ 0.0f, 20.0f, 0.0f };
 	float cameraSpeed = 0.05f;
 	bool firstPersonCamera = true;
