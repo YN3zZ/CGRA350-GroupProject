@@ -56,14 +56,8 @@ private:
 	int m_treeType = 3;
 
 	// First person camera movement.
-	bool wPressed = false;
-	bool sPressed = false;
-	bool aPressed = false;
-	bool dPressed = false;
-	bool shiftPressed = false;
-	bool spacePressed = false;
 	glm::vec3 cameraPosition{ 0.0f, 20.0f, 0.0f };
-	float cameraSpeed = 0.05f;
+	float cameraSpeed = 0.1f;
 	bool firstPersonCamera = true;
 	
 	// skybox
@@ -75,7 +69,7 @@ private:
 	GLuint m_sunShader = 0;
 	float m_sunIntensity = 1.5f;
 	float m_sunAzimuth = 0.0f;
-	float m_sunElevation = 30.0f;
+	float m_sunElevation = 50.0f;
 	float m_sunDistance = 500.0f;
 
 	// Shadow mapping

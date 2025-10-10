@@ -23,6 +23,7 @@ public:
 	int meshResolution = 100; // Square this to get total vertices.
 	float waterAlpha = 0.8f;
 	float waterSpeed = 0.6f;
+	float waterAmplitude = 0.005f;
 
 	float roughness = 0.02f;
 	float metallic = 0.25f; // 0 = normal, 1 = metal.
