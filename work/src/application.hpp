@@ -86,12 +86,27 @@ private:
 	bool m_enable_shadows = true;
 	bool m_use_pcf = true;
 
+	// Water reflection/refraction
+	GLuint m_reflection_fbo = 0;
+	GLuint m_reflection_texture = 0;
+	GLuint m_reflection_depth_buffer = 0;
+	GLuint m_refraction_fbo = 0;
+	GLuint m_refraction_texture = 0;
+	GLuint m_refraction_depth_buffer = 0;
+	int m_water_fbo_width = 1920;
+	int m_water_fbo_height = 1080;
+	bool m_enable_water_reflections = true;
+	float m_water_wave_strength = 0.03f;
+	float m_water_reflection_blend = 0.7f;
+	float m_cached_water_height = -0.4f;
+	
 	// Helper functions
 	void updateLightFromSun();
 	glm::vec3 getSunColor(float elevation);
 	glm::vec3 getSkyColor(float elevation);
 	void renderShadowMap();
 	glm::mat4 getLightSpaceMatrix() const;
+	void renderScene(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix, bool skipWater = false, const glm::vec4& clipPlane = glm::vec4(0.0f));
 
 public:
 	// setup
