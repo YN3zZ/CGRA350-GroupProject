@@ -26,7 +26,7 @@ public:
     // Leaf parameters
     GLuint leafTexture = 0;
     float leafSize = 0.4f;
-    bool renderLeaves = true;
+    bool renderLeaves = false;
 
     TreeGenerator() = default;
     ~TreeGenerator();  // Need clean up OpenGL resources

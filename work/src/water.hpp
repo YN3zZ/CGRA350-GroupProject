@@ -22,6 +22,7 @@ public:
 	int meshResolution = 100; // Square this to get total vertices.
 	float waterAlpha = 0.8f;
 	float waterSpeed = 0.6f;
+	float waterAmplitude = 0.005f;
 
 	float roughness = 0.02f;
 	float metallic = 0.25f; // 0 = normal, 1 = metal.
@@ -29,12 +30,9 @@ public:
 
 	// Constructor and public methods.
 	Water();
-	void draw(const glm::mat4& view, const glm::mat4& proj,
-			  const glm::vec3& lightDirection, const glm::vec3& lightColor,
-			  const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
-			  GLuint shadowMapTexture = 0,
-			  bool enableShadows = false,
-			  bool usePCF = true);
+	void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDirection, const glm::vec3& lightColor,
+			const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f), GLuint shadowMapTexture = 0, 
+			bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
 };
