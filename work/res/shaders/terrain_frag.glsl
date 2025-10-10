@@ -240,15 +240,23 @@ void main() {
 	}
 
 	// Calculate fog based on distance to camera.
-	float fogMin = 0.1;
-	float fogMax = 20.0;
-	vec3 fogColor = vec3(0.4f);
+	bool linearFog = false; // User controls this.
 
+	float fogFactor;
+	vec3 fogColor = vec3(0.4f); // Make based on sun.
 	float dist = length(f_in.position);
-	// Inverse min-max scaling so that far away is 0 and close is 1.
-	float fogFactor = (fogMax - dist) / (fogMax - fogMin);
-	fogFactor = clamp(fogFactor, 0.0f, 1.0f);
+	if (linearFog) {
+		float fogMin = 0.1;
+		float fogMax = 30.0; // User controls this.
 
+		// Inverse min-max scaling so that far away is 0 and close is 1.
+		fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	}
+	else {
+		float fogDensity = 0.05f; // User controls this.
+		fogFactor = exp(-fogDensity * dist);
+	}
+	fogFactor = clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
 
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
