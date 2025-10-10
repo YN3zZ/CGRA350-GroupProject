@@ -57,7 +57,7 @@ private:
 
 	// First person camera movement.
 	glm::vec3 cameraPosition{ 0.0f, 20.0f, 0.0f };
-	float cameraSpeed = 0.1f;
+	float cameraSpeed = 0.2f;
 	bool firstPersonCamera = true;
 	
 	// skybox
