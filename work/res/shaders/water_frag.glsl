@@ -24,6 +24,13 @@ uniform sampler2D uNormalMap;
 uniform sampler2DShadow uShadowMap;
 uniform bool uEnableShadows;
 uniform bool uUsePCF;
+// Water reflection/refraction
+uniform sampler2D uReflectionTexture;
+uniform sampler2D uRefractionTexture;
+uniform sampler2D uDuDvMap;
+uniform bool uEnableReflections;
+uniform float uWaveStrength;
+uniform float uReflectionBlend;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -35,6 +42,7 @@ in VertexData{
 	vec3 tangent; // Tangent and bitangent for normal mapping.
 	vec3 bitangent;
 	vec4 lightSpacePos;
+	vec4 clipSpace;
 } f_in;
 
 // framebuffer output
@@ -146,6 +154,11 @@ void main() {
 
 	vec2 uv = f_in.textureCoord * textureScale;
 
+	// Projective texture mapping for reflections/refractions
+	vec2 ndc = (f_in.clipSpace.xy / f_in.clipSpace.w);
+	vec2 refractCoords = ndc * 0.5 + 0.5;
+	vec2 reflectCoords = vec2(refractCoords.x, 1.0 - refractCoords.y);
+
 	// Texture wave animation. Might make these controllable in UI.
 	float frequency = 1.0f;
 	float amplitude = waterAmplitude;
@@ -154,7 +167,27 @@ void main() {
 	vec2 oldUV = uv.xy;
 	uv.y += sin(cos(oldUV.x) * frequency + uTime * waterSpeed) * amplitude + scrollAmount/2;
 	uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;
-	
+
+	// DuDv distortion for water waves with symmetric sampling to avoid directional bias
+	float moveFactor = uTime * waterSpeed * 0.03f;
+
+	// Use mod to ensure UVs wrap properly
+	vec2 distortedUV1 = mod(f_in.textureCoord + vec2(moveFactor, moveFactor * 0.8), 1.0);
+	vec2 distortedUV2 = mod(f_in.textureCoord - vec2(moveFactor * 0.7, moveFactor * 0.6), 1.0);
+
+	// Sample DuDv map symmetrically and combine for distortion without directional drift
+	vec2 distortion1 = (texture(uDuDvMap, distortedUV1).rg * 2.0 - 1.0);
+	vec2 distortion2 = (texture(uDuDvMap, distortedUV2).rg * 2.0 - 1.0);
+	vec2 distortion = (distortion1 + distortion2) * 0.5 * uWaveStrength;
+
+	// Scale distortion for screen-space coordinates with less aggressive perspective correction
+	float screenSpaceScale = 0.15f / max(f_in.clipSpace.w, 1.0);
+	vec2 screenDistortion = distortion * screenSpaceScale;
+
+	// Apply distortion and clamp to prevent edge artifacts
+	reflectCoords = clamp(reflectCoords + screenDistortion, 0.001, 0.999);
+	refractCoords = clamp(refractCoords + screenDistortion, 0.001, 0.999);
+
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
 	vec3 textureColor = texture(uTexture, uv).rgb;
 	vec3 normalMap = texture(uNormalMap, uv).rgb;
@@ -203,6 +236,18 @@ void main() {
 	vec3 rs = (beckman * attenuation * schlick) / (4.0f * NdotL * NdotV);
 	vec3 specular = rs * lightColor;
 
+	// Sample reflection and refraction textures
+	vec4 reflectionColor = vec4(skyColor, 1.0);
+	vec4 refractionColor = vec4(textureColor, 1.0);
+
+	if (uEnableReflections) {
+		reflectionColor = texture(uReflectionTexture, reflectCoords);
+		refractionColor = texture(uRefractionTexture, refractCoords);
+	}
+
+	float fresnelFactor = pow(1.0f - NdotV, 2.0f);
+	vec3 environmentColor = mix(refractionColor.rgb, reflectionColor.rgb, fresnelFactor);
+
 
 	// normDir dot lightDir for how direct the diffuse is to the light.
 	float diffuseFactor = NdotL;
@@ -225,6 +270,12 @@ void main() {
 
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
+
+	if (uEnableReflections) {
+		// Mix environment color with PBR lighting, ReflectionBlend controls how much
+		finalColor = mix(environmentColor, finalColor, 1.0 - uReflectionBlend) + specular * 0.5;
+	}
+
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
 	fb_color = vec4(finalColor, alpha);

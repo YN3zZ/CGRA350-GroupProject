@@ -236,6 +236,48 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Create reflection framebuffer
+    glGenFramebuffers(1, &m_reflection_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
+
+    // Reflection color texture
+    glGenTextures(1, &m_reflection_texture);
+    glBindTexture(GL_TEXTURE_2D, m_reflection_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_reflection_texture, 0);
+
+    // Reflection depth renderbuffer
+    glGenRenderbuffers(1, &m_reflection_depth_buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_reflection_depth_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_reflection_depth_buffer);
+
+    // Create refraction framebuffer
+    glGenFramebuffers(1, &m_refraction_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
+
+    // Refraction color texture
+    glGenTextures(1, &m_refraction_texture);
+    glBindTexture(GL_TEXTURE_2D, m_refraction_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_refraction_texture, 0);
+
+    // Refraction depth renderbuffer
+    glGenRenderbuffers(1, &m_refraction_depth_buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_refraction_depth_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_refraction_depth_buffer);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     // Change UI Style
     ImGuiStyle &style = ImGui::GetStyle();
     // Red button, white text, red background
@@ -249,14 +291,178 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 }
 
 
+// Helper function to render the scene (terrain, trees, skybox)
+void Application::renderScene(const mat4& view, const mat4& proj, const mat4& lightSpaceMatrix, bool skipWater, const vec4& clipPlane) {
+	// Calculate light color based on sun elevation
+	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
+	vec3 baseLightColor = m_terrain.lightColor;
+	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;
+
+	// Set clip plane uniform for terrain
+	glUseProgram(m_terrain.shader);
+	glUniform4fv(glGetUniformLocation(m_terrain.shader, "uClipPlane"), 1, value_ptr(clipPlane));
+
+	// Draw terrain
+	m_terrain.lightColor = activeLightColor;
+	m_terrain.draw(view, proj, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
+
+	// Set clip plane uniform for trees
+	glUseProgram(m_trees.shader);
+	glUniform4fv(glGetUniformLocation(m_trees.shader, "uClipPlane"), 1, value_ptr(clipPlane));
+
+	// Draw trees
+	m_trees.draw(view, proj, m_terrain.lightDirection, activeLightColor, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
+
+	m_terrain.lightColor = baseLightColor;
+
+	// Draw skybox
+	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_CULL_FACE);
+	glUseProgram(skyboxShader);
+	mat4 skyboxView = mat4(mat3(view));
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "view"), 1, false, value_ptr(skyboxView));
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "projection"), 1, false, value_ptr(proj));
+
+	vec3 skyColor = getSkyColor(m_sunElevation);
+	float atmosphereBlend;
+	if (m_sunElevation > 0.0f) {
+		atmosphereBlend = 0.0f;
+	} else if (m_sunElevation > -20.0f) {
+		atmosphereBlend = smoothstep(0.0f, -20.0f, m_sunElevation);
+	} else {
+		atmosphereBlend = 1.0f;
+	}
+
+	glUniform3fv(glGetUniformLocation(skyboxShader, "atmosphereColor"), 1, value_ptr(skyColor));
+	glUniform1f(glGetUniformLocation(skyboxShader, "atmosphereBlend"), atmosphereBlend);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
+	skyboxMesh.draw();
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
+
+	// Draw sun (if not skipping water pass)
+	if (!skipWater) {
+		glDepthFunc(GL_LEQUAL);
+		glUseProgram(m_sunShader);
+
+		// Calculate sun position
+		float azimuthRad = glm::radians(m_sunAzimuth);
+		float elevationRad = glm::radians(m_sunElevation);
+		vec3 sunPosition;
+		sunPosition.x = m_sunDistance * cos(elevationRad) * cos(azimuthRad);
+		sunPosition.y = m_sunDistance * sin(elevationRad);
+		sunPosition.z = m_sunDistance * cos(elevationRad) * sin(azimuthRad);
+
+		mat4 sunModel = translate(mat4(1), sunPosition) * scale(mat4(1), vec3(10.0f));
+		mat4 sunMV = view * sunModel;
+
+		glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uModelViewMatrix"), 1, false, value_ptr(sunMV));
+		glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uProjectionMatrix"), 1, false, value_ptr(proj));
+		glUniform3fv(glGetUniformLocation(m_sunShader, "uSunColor"), 1, value_ptr(activeLightColor));
+		glUniform1f(glGetUniformLocation(m_sunShader, "uIntensity"), m_sunIntensity);
+
+		cgra::drawSphere();
+		glDepthFunc(GL_LESS);
+	}
+}
+
 void Application::render() {
-	// 1st pass, shadow map
+	// 1st pass: Reflection
+	if (m_enable_water_reflections) {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
+		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
+		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+		glFrontFace(GL_CCW);
+		glEnable(GL_CLIP_DISTANCE0);
+
+		// Mirror camera across water plane
+		float waterHeight = m_cached_water_height;
+		float distance = 2.0f * (cameraPosition.y - waterHeight);
+		vec3 reflectedCameraPos = cameraPosition;
+		reflectedCameraPos.y -= distance;
+		float reflectedPitch = -m_pitch;
+
+		mat4 reflectionView;
+		if (firstPersonCamera) {
+			reflectionView = rotate(mat4(1), reflectedPitch, vec3(1, 0, 0))
+				* rotate(mat4(1), m_yaw, vec3(0, 1, 0))
+				* translate(mat4(1), -reflectedCameraPos);
+		} else {
+			reflectionView = translate(mat4(1), vec3(0, 0, -m_distance))
+				* rotate(mat4(1), reflectedPitch, vec3(1, 0, 0))
+				* rotate(mat4(1), m_yaw, vec3(0, 1, 0));
+		}
+
+		int width, height;
+		glfwGetFramebufferSize(m_window, &width, &height);
+		mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
+
+		mat4 lightSpaceMatrix = getLightSpaceMatrix();
+		vec4 clipPlane(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
+
+		renderScene(reflectionView, proj, lightSpaceMatrix, true, clipPlane);
+
+		glDisable(GL_CLIP_DISTANCE0);
+		glFrontFace(GL_CW);
+	}
+
+	// 2nd pass: Refraction
+	if (m_enable_water_reflections) {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
+		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
+		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+		glFrontFace(GL_CW);
+		glEnable(GL_CLIP_DISTANCE0);
+
+		int width, height;
+		glfwGetFramebufferSize(m_window, &width, &height);
+		mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
+
+		mat4 view;
+		if (firstPersonCamera) {
+			view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+				* rotate(mat4(1), m_yaw, vec3(0, 1, 0))
+				* translate(mat4(1), -cameraPosition);
+		} else {
+			view = translate(mat4(1), vec3(0, 0, -m_distance))
+				* rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+				* rotate(mat4(1), m_yaw, vec3(0, 1, 0));
+		}
+
+		mat4 lightSpaceMatrix = getLightSpaceMatrix();
+		float waterHeight = m_cached_water_height; // Use cached height
+		vec4 clipPlane(0.0f, -1.0f, 0.0f, waterHeight + 0.1f); // Clip above water
+
+		renderScene(view, proj, lightSpaceMatrix, true, clipPlane);
+
+		glDisable(GL_CLIP_DISTANCE0);
+	}
+
+	// 3rd pass: Shadow map
 	// Only render shadows when sun is above horizon
 	if (m_enable_shadows && m_sunElevation > -5.0f) {
 		renderShadowMap();
 	}
 
-	// 2nd pass: main rendering
+	// 4th pass: main rendering
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// retrieve the window height
 	int width, height;
@@ -276,16 +482,8 @@ void Application::render() {
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CW);
 
-	// projection matrix
-	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
-
-	// view matrix
-    mat4 view;
+	// Update camera position for first person mode
     if (firstPersonCamera) {
-        view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
-            * rotate(mat4(1), m_yaw, vec3(0, 1, 0))
-            * translate(mat4(1), -cameraPosition);
-
         float angle = -m_yaw;
         vec3 forward = vec3(-sin(angle), 0.0f, -cos(angle));
         vec3 up(0.0f, 1.0f, 0.0f);
@@ -307,7 +505,17 @@ void Application::render() {
 		} 
 		cameraPosition += (verticalMove + horizontalMove) * cameraSpeed;
     }
-    else { // Old camera focused on a single point.
+
+	// projection matrix
+	mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
+
+	// view matrix
+    mat4 view;
+    if (firstPersonCamera) {
+        view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+            * rotate(mat4(1), m_yaw, vec3(0, 1, 0))
+            * translate(mat4(1), -cameraPosition);
+    } else {
         view = translate(mat4(1), vec3(0, 0, -m_distance))
             * rotate(mat4(1), m_pitch, vec3(1, 0, 0))
             * rotate(mat4(1), m_yaw, vec3(0, 1, 0));
@@ -318,27 +526,22 @@ void Application::render() {
 	if (m_show_axis) drawAxis(view, proj);
 	glPolygonMode(GL_FRONT_AND_BACK, (m_showWireframe) ? GL_LINE : GL_FILL);
 
-	// Calculate light color based on sun elevation
-	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
-	vec3 baseLightColor = m_terrain.lightColor;
-	m_terrain.lightColor *= sunVisibility;
-
 	// Calculate light space matrix for shadow mapping
 	mat4 lightSpaceMatrix = getLightSpaceMatrix();
 
-	glActiveTexture(GL_TEXTURE20);
-	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+	// Set no clipping for main scene
+	vec4 noClipPlane(0.0f, 0.0f, 0.0f, 0.0f);
+	renderScene(view, proj, lightSpaceMatrix, false, noClipPlane);
 
-	// draw the model
-	m_terrain.draw(view, proj, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
+    // Draw water with reflection/refraction textures
+	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
+	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;
+    m_water.draw(view, proj, m_terrain.lightDirection, activeLightColor,
+				 lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf,
+				 m_reflection_texture, m_refraction_texture,
+				 m_enable_water_reflections, m_water_wave_strength, m_water_reflection_blend);
 
-	// Draw trees with lighting from terrain.
-	m_trees.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
-
-    // Draw water with lighting from terrain.
-    m_water.draw(view, proj, m_terrain.lightDirection, m_terrain.lightColor, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
-
-	// Draw sun 
+	// Draw sun
 	glDepthFunc(GL_LEQUAL);
 	glUseProgram(m_sunShader);
 
@@ -356,48 +559,11 @@ void Application::render() {
 
 	glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uModelViewMatrix"), 1, false, value_ptr(sunMV));
 	glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uProjectionMatrix"), 1, false, value_ptr(proj));
-	glUniform3fv(glGetUniformLocation(m_sunShader, "uSunColor"), 1, value_ptr(m_terrain.lightColor));
+	glUniform3fv(glGetUniformLocation(m_sunShader, "uSunColor"), 1, value_ptr(activeLightColor));
 	glUniform1f(glGetUniformLocation(m_sunShader, "uIntensity"), m_sunIntensity);
 
 	cgra::drawSphere();
 	glDepthFunc(GL_LESS);
-
-	m_terrain.lightColor = baseLightColor;
-
-	// Draw skybox as last
-	glDepthMask(GL_FALSE);
-	glDepthFunc(GL_LEQUAL);
-	glDisable(GL_CULL_FACE);
-	glUseProgram(skyboxShader);
-	mat4 skyboxView = mat4(mat3(view));
-	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "view"), 1, false, value_ptr(skyboxView));
-	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "projection"), 1, false, value_ptr(proj));
-
-	// Darken skybox as sun goes down
-	vec3 skyColor = getSkyColor(m_sunElevation);
-	float atmosphereBlend;
-
-	if (m_sunElevation > 0.0f) {
-		// Day
-		atmosphereBlend = 0.0f;
-	} else if (m_sunElevation > -20.0f) {
-		// Sunset to night
-		atmosphereBlend = smoothstep(0.0f, -20.0f, m_sunElevation);
-	} else {
-		// Night
-		atmosphereBlend = 1.0f;
-	}
-
-	glUniform3fv(glGetUniformLocation(skyboxShader, "atmosphereColor"), 1, value_ptr(skyColor));
-	glUniform1f(glGetUniformLocation(skyboxShader, "atmosphereBlend"), atmosphereBlend);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
-	skyboxMesh.draw();
-	glDepthMask(GL_TRUE);
-	glDepthFunc(GL_LESS);
-	glEnable(GL_CULL_FACE);
 }
 
 
@@ -450,14 +616,77 @@ void Application::renderGUI() {
 		m_terrain.setShaderParams();
 		m_water.createMesh();
 		m_water.setShaderParams();
+    m_cached_water_height = m_water.waterHeight;
 	}
 
 	ImGui::Separator();
-	ImGui::Text("Water Parameters");
-	ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
-	ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
-	ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
+    ImGui::Text("Water Parameters");
+    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
+    ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
+    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
 	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.5f, "%.3f", 4.0f);
+	ImGui::Checkbox("Enable Water Reflections", &m_enable_water_reflections);
+	if (m_enable_water_reflections) {
+		ImGui::SliderFloat("Wave Distortion Strength", &m_water_wave_strength, 0.0f, 0.3f, "%.3f");
+		ImGui::SliderFloat("Reflection Blend", &m_water_reflection_blend, 0.0f, 1.0f, "%.2f");
+
+		const char* resolutions[] = {"960x540 (Half)", "1280x720 (HD)", "1920x1080 (Full HD)", "2560x1440 (2K)"};
+		int currentRes = 2;
+		if (m_water_fbo_width == 960) currentRes = 0;
+		else if (m_water_fbo_width == 1280) currentRes = 1;
+		else if (m_water_fbo_width == 1920) currentRes = 2;
+		else if (m_water_fbo_width == 2560) currentRes = 3;
+
+		if (ImGui::Combo("Reflection Resolution", &currentRes, resolutions, 4)) {
+			if (currentRes == 0) { m_water_fbo_width = 960; m_water_fbo_height = 540; }
+			else if (currentRes == 1) { m_water_fbo_width = 1280; m_water_fbo_height = 720; }
+			else if (currentRes == 2) { m_water_fbo_width = 1920; m_water_fbo_height = 1080; }
+			else if (currentRes == 3) { m_water_fbo_width = 2560; m_water_fbo_height = 1440; }
+
+			// Rebuild framebuffers with new resolution
+			// Delete old FBOs
+			glDeleteFramebuffers(1, &m_reflection_fbo);
+			glDeleteTextures(1, &m_reflection_texture);
+			glDeleteRenderbuffers(1, &m_reflection_depth_buffer);
+			glDeleteFramebuffers(1, &m_refraction_fbo);
+			glDeleteTextures(1, &m_refraction_texture);
+			glDeleteRenderbuffers(1, &m_refraction_depth_buffer);
+
+			// Recreate reflection FBO
+			glGenFramebuffers(1, &m_reflection_fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
+			glGenTextures(1, &m_reflection_texture);
+			glBindTexture(GL_TEXTURE_2D, m_reflection_texture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_reflection_texture, 0);
+			glGenRenderbuffers(1, &m_reflection_depth_buffer);
+			glBindRenderbuffer(GL_RENDERBUFFER, m_reflection_depth_buffer);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_reflection_depth_buffer);
+
+			// Recreate refraction FBO
+			glGenFramebuffers(1, &m_refraction_fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
+			glGenTextures(1, &m_refraction_texture);
+			glBindTexture(GL_TEXTURE_2D, m_refraction_texture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_refraction_texture, 0);
+			glGenRenderbuffers(1, &m_refraction_depth_buffer);
+			glBindRenderbuffer(GL_RENDERBUFFER, m_refraction_depth_buffer);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_refraction_depth_buffer);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+  }
 
 	ImGui::Separator();
 	ImGui::Text("Sun & Lighting");
@@ -516,8 +745,8 @@ void Application::renderGUI() {
 			}
 		}
 	}
-
-    // L-System parameters that affect mesh generation.
+  
+    // L-System parameters that affect mesh generation
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
