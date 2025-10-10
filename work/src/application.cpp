@@ -293,18 +293,20 @@ void Application::render() {
         vec3 right = vec3(cos(angle), 0.0f, -sin(angle));
 
         // Add the key movement together to allow diagonal movement.
-        vec3 cameraMove(0.0f);
-        if (wPressed) cameraMove += forward;
-        if (sPressed) cameraMove -= forward;
-        if (dPressed) cameraMove += right;
-        if (aPressed) cameraMove -= right;
-        if (spacePressed) cameraMove += up;
-        if (shiftPressed) cameraMove -= up;
+        vec3 horizontalMove(0.0f);
+		vec3 verticalMove(0.0f);
+        if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) horizontalMove += forward;
+        if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) horizontalMove -= forward;
+        if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) horizontalMove += right;
+        if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) horizontalMove -= right;
+        if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) verticalMove += up;
+        if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) verticalMove -= up;
 
         // Opposing directions cancel out and normalise makes diagonal movement the same speed as straight.
-        if (length(cameraMove) > 0) {
-            cameraPosition += normalize(cameraMove) * cameraSpeed;
-        }
+        if (length(horizontalMove) > 0) {
+			horizontalMove = normalize(horizontalMove);
+		} 
+		cameraPosition += (verticalMove + horizontalMove) * cameraSpeed;
     }
     else { // Old camera focused on a single point.
         view = translate(mat4(1), vec3(0, 0, -m_distance))
@@ -620,25 +622,7 @@ void Application::scrollCallback(double xoffset, double yoffset) {
 
 
 void Application::keyCallback(int key, int scancode, int action, int mods) {
-    // Pressed is 1, released is 0. Cast to bool for moving each frame.
-    if (key == GLFW_KEY_W) {
-        wPressed = (bool)action; 
-    }
-    else if (key == GLFW_KEY_A) {
-        aPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_S) {
-        sPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_D) {
-        dPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_LEFT_SHIFT) {
-        shiftPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_SPACE) {
-        spacePressed = (bool)action;
-    }
+	(void)key, (void)scancode, (void)action, (void)mods; // currently un-used
 }
 
 
