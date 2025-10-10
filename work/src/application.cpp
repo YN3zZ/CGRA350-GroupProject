@@ -441,7 +441,7 @@ void Application::renderGUI() {
     if (ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f")) {
         m_water.meshResolution = m_terrain.meshResolution;
     }
-	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 0.1f, 5.0f, "%.1f");
+	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 1.0f, 200.0f, "%.1f");
 
 	ImGui::Separator();
 	ImGui::Text("Sun & Lighting");
