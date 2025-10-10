@@ -23,8 +23,10 @@ Water::Water() {
 	string pathStart = CGRA_SRCDIR + string("/res/textures/") + "water";
 	rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
 	rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
+	rgba_image dudvImage = rgba_image(pathStart + string("_dudv.png"));
 	texture = textureImage.uploadTexture();
 	normalMap = normalImage.uploadTexture();
+	dudvMap = dudvImage.uploadTexture();
 
 	// Get starting time for animations to base off.
 	startTime = (float)glfwGetTime();
@@ -60,7 +62,12 @@ void Water::draw(const mat4& view, const mat4& proj,
 				  const mat4& lightSpaceMatrix,
 				  GLuint shadowMapTexture,
 				  bool enableShadows,
-				  bool usePCF) {
+				  bool usePCF,
+				  GLuint reflectionTexture,
+				  GLuint refractionTexture,
+				  bool enableReflections,
+				  float waveStrength,
+				  float reflectionBlend) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -93,6 +100,23 @@ void Water::draw(const mat4& view, const mat4& proj,
 	glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 20);
 	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
 	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
+
+	// Water reflection/refraction params
+	glActiveTexture(GL_TEXTURE24);
+	glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+	glUniform1i(glGetUniformLocation(shader, "uReflectionTexture"), 24);
+
+	glActiveTexture(GL_TEXTURE25);
+	glBindTexture(GL_TEXTURE_2D, refractionTexture);
+	glUniform1i(glGetUniformLocation(shader, "uRefractionTexture"), 25);
+
+	glActiveTexture(GL_TEXTURE26);
+	glBindTexture(GL_TEXTURE_2D, dudvMap);
+	glUniform1i(glGetUniformLocation(shader, "uDuDvMap"), 26);
+
+	glUniform1i(glGetUniformLocation(shader, "uEnableReflections"), enableReflections ? 1 : 0);
+	glUniform1f(glGetUniformLocation(shader, "uWaveStrength"), waveStrength);
+	glUniform1f(glGetUniformLocation(shader, "uReflectionBlend"), reflectionBlend);
 
 	// Draw the terrain mesh.
 	waterMesh.draw();
