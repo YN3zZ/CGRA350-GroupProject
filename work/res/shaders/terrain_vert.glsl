@@ -4,6 +4,7 @@
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
 uniform mat4 uLightSpaceMatrix;
+uniform vec4 uClipPlane;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -21,6 +22,8 @@ out VertexData {
     vec3 bitangent; // Part of TBN matrix structure mentioned in lecture.
 	vec4 lightSpacePos;
 } v_out;
+
+out float gl_ClipDistance[1];
 
 void main() {
 	// Send untransformed global position for texture mapping based on height proportion.
@@ -45,6 +48,8 @@ void main() {
 
 	// Calculate light space position for shadow mapping
 	v_out.lightSpacePos = uLightSpaceMatrix * vec4(aPosition, 1.0);
+
+	gl_ClipDistance[0] = dot(vec4(aPosition, 1.0), uClipPlane);
 
     // Set the screenspace position (needed for converting to fragment data)
     gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0f);

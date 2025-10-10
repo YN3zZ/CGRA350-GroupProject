@@ -11,6 +11,7 @@ private:
 	cgra::gl_mesh waterMesh;
 	GLuint texture;
 	GLuint normalMap;
+	GLuint dudvMap;
 	float startTime;
 
 public:
@@ -30,9 +31,17 @@ public:
 
 	// Constructor and public methods.
 	Water();
-	void draw(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& lightDirection, const glm::vec3& lightColor,
-			const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f), GLuint shadowMapTexture = 0, 
-			bool enableShadows = false, bool usePCF = true);
+	void draw(const glm::mat4& view, const glm::mat4& proj,
+			  const glm::vec3& lightDirection, const glm::vec3& lightColor,
+			  const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
+			  GLuint shadowMapTexture = 0,
+			  bool enableShadows = false,
+			  bool usePCF = true,
+			  GLuint reflectionTexture = 0,
+			  GLuint refractionTexture = 0,
+			  bool enableReflections = false,
+			  float waveStrength = 0.03f,
+			  float reflectionBlend = 0.7f);
 	void setShaderParams();
 	void createMesh();
 };
