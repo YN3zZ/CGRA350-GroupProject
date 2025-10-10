@@ -202,9 +202,10 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Initialize light direction from sun
     updateLightFromSun();
 
-    // Build shadow depth shader
+    // Build shadow depth shader (must have both vertex and fragment shader for OpenGL 3.3 core)
     shader_builder sb_shadow;
     sb_shadow.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_vert.glsl"));
+    sb_shadow.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_frag.glsl"));
     m_shadow_depth_shader = sb_shadow.build();
 
     // Create shadow map framebuffer
@@ -298,6 +299,15 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 	vec3 baseLightColor = m_terrain.lightColor;
 	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;
 
+	// Re-bind shadow map texture to prevent conflicts from FBO switches
+	// to ensures shadows work correctly during reflection/refraction passes
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+
+	// Ensure depth mask is enabled for geometry rendering
+	// (skybox disables it
+	glDepthMask(GL_TRUE);
+
 	// Set clip plane uniform for terrain
 	glUseProgram(m_terrain.shader);
 	glUniform4fv(glGetUniformLocation(m_terrain.shader, "uClipPlane"), 1, value_ptr(clipPlane));
@@ -373,12 +383,23 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 
 void Application::render() {
 
-	// 1st pass: Reflection
+	// 1st pass: Shadow map (must be first so reflections/refractions can use it)
+
+	// Only render shadows when sun is above horizon
+	if (m_enable_shadows && m_sunElevation > -5.0f) {
+		renderShadowMap();
+	}
+
+	// 2nd pass: Reflection
 	if (m_enable_water_reflections) {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
 		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
 		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Re-bind shadow texture after FBO switch
+		glActiveTexture(GL_TEXTURE20);
+		glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
@@ -417,12 +438,16 @@ void Application::render() {
 		glDisable(GL_CLIP_DISTANCE0);
 		glFrontFace(GL_CW);
 
-		// 2nd pass: Refraction
+		// 3rd pass: Refraction
 
 		glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
 		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
 		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Re-bind shadow texture after FBO switch
+		glActiveTexture(GL_TEXTURE20);
+		glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
@@ -454,13 +479,6 @@ void Application::render() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	// 3rd pass: Shadow map
-	
-	// Only render shadows when sun is above horizon
-	if (m_enable_shadows && m_sunElevation > -5.0f) {
-		renderShadowMap();
-	}
-
 	// 4th pass: main rendering
 
 	// retrieve the window height
@@ -473,6 +491,10 @@ void Application::render() {
 	// clear the back-buffer
 	glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Re-bind shadow texture after returning to default framebuffer
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 	// enable flags for normal/forward rendering
 	glEnable(GL_DEPTH_TEST);
@@ -976,6 +998,14 @@ void Application::renderShadowMap() {
 	// Bind shadow framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, m_shadow_map_fbo);
 	glViewport(0, 0, m_shadow_map_size, m_shadow_map_size);
+
+	// Ensure depth writing is enabled (might be disabled by skybox rendering)
+	glDepthMask(GL_TRUE);
+
+	// Depth-only rendering
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Enable depth testing
@@ -1037,4 +1067,9 @@ void Application::renderShadowMap() {
 	// Restore viewport and unbind framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+
+	// Ensure shadow map texture remains bound to GL_TEXTURE20
+	// to prevent texture unit conflicts during reflection/refraction passes
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 }
