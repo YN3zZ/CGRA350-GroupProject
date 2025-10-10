@@ -239,8 +239,20 @@ void main() {
 		shadow = calculateShadow(f_in.lightSpacePos, normDir, lightDir);
 	}
 
+	// Calculate fog based on distance to camera.
+	float fogMin = 0.1;
+	float fogMax = 20.0;
+	vec3 fogColor = vec3(0.4f);
+
+	float dist = length(f_in.position);
+	// Inverse min-max scaling so that far away is 0 and close is 1.
+	float fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	fogFactor = clamp(fogFactor, 0.0f, 1.0f);
+
+
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
+	finalColor = mix(fogColor, finalColor, fogFactor);
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
 	fb_color = vec4(finalColor, 1.0f);
