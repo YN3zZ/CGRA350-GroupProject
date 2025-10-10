@@ -56,14 +56,8 @@ private:
 	int m_treeType = 3;
 
 	// First person camera movement.
-	bool wPressed = false;
-	bool sPressed = false;
-	bool aPressed = false;
-	bool dPressed = false;
-	bool shiftPressed = false;
-	bool spacePressed = false;
 	glm::vec3 cameraPosition{ 0.0f, 20.0f, 0.0f };
-	float cameraSpeed = 0.05f;
+	float cameraSpeed = 0.2f;
 	bool firstPersonCamera = true;
 	
 	// skybox
@@ -71,7 +65,43 @@ private:
 	GLuint skyboxTexture = 0;
 	cgra::gl_mesh skyboxMesh;
 
-  
+	// sun
+	GLuint m_sunShader = 0;
+	float m_sunIntensity = 1.5f;
+	float m_sunAzimuth = 0.0f;
+	float m_sunElevation = 50.0f;
+	float m_sunDistance = 500.0f;
+
+	// Shadow mapping
+	GLuint m_shadow_map_fbo = 0;
+	GLuint m_shadow_map_texture = 0;
+	GLuint m_shadow_depth_shader = 0;
+	int m_shadow_map_size = 2048;
+	bool m_enable_shadows = true;
+	bool m_use_pcf = true;
+
+	// Water reflection/refraction
+	GLuint m_reflection_fbo = 0;
+	GLuint m_reflection_texture = 0;
+	GLuint m_reflection_depth_buffer = 0;
+	GLuint m_refraction_fbo = 0;
+	GLuint m_refraction_texture = 0;
+	GLuint m_refraction_depth_buffer = 0;
+	int m_water_fbo_width = 1920;
+	int m_water_fbo_height = 1080;
+	bool m_enable_water_reflections = true;
+	float m_water_wave_strength = 0.03f;
+	float m_water_reflection_blend = 0.7f;
+	float m_cached_water_height = -0.4f;
+	
+	// Helper functions
+	void updateLightFromSun();
+	glm::vec3 getSunColor(float elevation);
+	glm::vec3 getSkyColor(float elevation);
+	void renderShadowMap();
+	glm::mat4 getLightSpaceMatrix() const;
+	void renderScene(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix, bool skipWater = false, const glm::vec4& clipPlane = glm::vec4(0.0f));
+
 public:
 	// setup
 	Application(GLFWwindow *);

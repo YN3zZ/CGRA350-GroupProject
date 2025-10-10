@@ -16,9 +16,21 @@ uniform float alpha;
 // Current time for animating waves texture.
 uniform float uTime;
 uniform float waterSpeed;
+uniform float waterAmplitude;
 // A single texture and normal map.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
+// Shadow mapping
+uniform sampler2DShadow uShadowMap;
+uniform bool uEnableShadows;
+uniform bool uUsePCF;
+// Water reflection/refraction
+uniform sampler2D uReflectionTexture;
+uniform sampler2D uRefractionTexture;
+uniform sampler2D uDuDvMap;
+uniform bool uEnableReflections;
+uniform float uWaveStrength;
+uniform float uReflectionBlend;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -29,6 +41,8 @@ in VertexData{
 	vec2 textureCoord;
 	vec3 tangent; // Tangent and bitangent for normal mapping.
 	vec3 bitangent;
+	vec4 lightSpacePos;
+	vec4 clipSpace;
 } f_in;
 
 // framebuffer output
@@ -90,28 +104,97 @@ vec3 calculateNormal(vec3 normalMap) {
 }
 
 
+float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
+	// Perform perspective divide
+	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+
+	// Transform from NDC [-1,1] to texture coordinates [0,1]
+	projCoords = projCoords * 0.5 + 0.5;
+
+	// Outside shadow map bounds = no shadow
+	if (projCoords.z > 1.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+		return 1.0;
+	}
+
+	if (uUsePCF) {
+		// Improved PCF with adaptive spacing and hardware depth comparison
+		float shadow = 0.0;
+		vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+
+		// Adaptive spacing: tighter at high res, wider at low res
+		float resolution = float(textureSize(uShadowMap, 0).x);
+		float spacing = 10.0 - resolution / 512.0;
+
+		// Variable kernel size (using 1 for 3x3)
+		int pcfSize = 1;
+
+		for (int x = -pcfSize; x <= pcfSize; ++x) {
+			for (int y = -pcfSize; y <= pcfSize; ++y) {
+				vec2 offset = projCoords.xy + vec2(x, y) * spacing * texelSize;
+				// Hardware depth comparison: returns 1.0 if lit, 0.0 if shadowed
+				shadow += texture(uShadowMap, vec3(offset, projCoords.z));
+			}
+		}
+
+		int kernelSize = pcfSize * 2 + 1;
+		shadow /= float(kernelSize * kernelSize);
+
+		// Map [0,1] to [0.5,1], shadows never fully black
+		return clamp(shadow * 0.5 + 0.5, 0.5, 1.0);
+	} else {
+		// Hard shadows with hardware depth comparison
+		return texture(uShadowMap, projCoords);
+	}
+}
+
+
 void main() {
 	// Sky color. May make controllable later.
 	vec3 skyColor = vec3(0.5f, 0.65f, 0.8f);
 
 	vec2 uv = f_in.textureCoord * textureScale;
 
+	// Projective texture mapping for reflections/refractions
+	vec2 ndc = (f_in.clipSpace.xy / f_in.clipSpace.w);
+	vec2 refractCoords = ndc * 0.5 + 0.5;
+	vec2 reflectCoords = vec2(refractCoords.x, 1.0 - refractCoords.y);
+
 	// Texture wave animation. Might make these controllable in UI.
 	float frequency = 1.0f;
-	float amplitude = 0.05f - meshScale / 15000.0f;
+	float amplitude = waterAmplitude;
 	// Both UV x and y have waves. Some scrolling is added to make it move around. Gives the appeearance of moving water.
 	float scrollAmount = uTime * waterSpeed * 0.01f;
 	vec2 oldUV = uv.xy;
 	uv.y += sin(cos(oldUV.x) * frequency + uTime * waterSpeed) * amplitude + scrollAmount/2;
 	uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;
-	
+
+	// DuDv distortion for water waves with symmetric sampling to avoid directional bias
+	float moveFactor = uTime * waterSpeed * 0.03f;
+
+	// Use mod to ensure UVs wrap properly
+	vec2 distortedUV1 = mod(f_in.textureCoord + vec2(moveFactor, moveFactor * 0.8), 1.0);
+	vec2 distortedUV2 = mod(f_in.textureCoord - vec2(moveFactor * 0.7, moveFactor * 0.6), 1.0);
+
+	// Sample DuDv map symmetrically and combine for distortion without directional drift
+	vec2 distortion1 = (texture(uDuDvMap, distortedUV1).rg * 2.0 - 1.0);
+	vec2 distortion2 = (texture(uDuDvMap, distortedUV2).rg * 2.0 - 1.0);
+	vec2 distortion = (distortion1 + distortion2) * 0.5 * uWaveStrength;
+
+	// Scale distortion for screen-space coordinates with less aggressive perspective correction
+	float screenSpaceScale = 0.15f / max(f_in.clipSpace.w, 1.0);
+	vec2 screenDistortion = distortion * screenSpaceScale;
+
+	// Apply distortion and clamp to prevent edge artifacts
+	reflectCoords = clamp(reflectCoords + screenDistortion, 0.001, 0.999);
+	refractCoords = clamp(refractCoords + screenDistortion, 0.001, 0.999);
+
 	// Combine the textures/normalMaps to an overall color based on height, smoothly transitioned.
 	vec3 textureColor = texture(uTexture, uv).rgb;
 	vec3 normalMap = texture(uNormalMap, uv).rgb;
 
 	// Make deeper parts of waves darker.
 	float proportion = (f_in.displacement / 4.0f) + 0.5f;
-	textureColor = mix(textureColor * 0.6f, textureColor, proportion);
+	textureColor = mix(textureColor * 0.7f, textureColor, proportion);
 
 	// Ambient light.
 	float ambientStrength = 0.15f;
@@ -153,6 +236,18 @@ void main() {
 	vec3 rs = (beckman * attenuation * schlick) / (4.0f * NdotL * NdotV);
 	vec3 specular = rs * lightColor;
 
+	// Sample reflection and refraction textures
+	vec4 reflectionColor = vec4(skyColor, 1.0);
+	vec4 refractionColor = vec4(textureColor, 1.0);
+
+	if (uEnableReflections) {
+		reflectionColor = texture(uReflectionTexture, reflectCoords);
+		refractionColor = texture(uRefractionTexture, refractCoords);
+	}
+
+	float fresnelFactor = pow(1.0f - NdotV, 2.0f);
+	vec3 environmentColor = mix(refractionColor.rgb, reflectionColor.rgb, fresnelFactor);
+
 
 	// normDir dot lightDir for how direct the diffuse is to the light.
 	float diffuseFactor = NdotL;
@@ -166,9 +261,21 @@ void main() {
 	vec3 kd = (2.0f - schlick) * (1.0f - metallic);
 	// The diffuse uses the object color evenly scattered in all directions (using PI). Adds sky color.
 	vec3 diffuse = kd * (skyColor * ambientStrength + (textureColor / PI) * diffuseFactor);
-	
-	// Add ambient light to diffuse and specular.
-	vec3 finalColor = ambient + diffuse + specular;
+
+	// Calculate shadow visibility with slope-based bias
+	float shadow = 1.0;
+	if (uEnableShadows) {
+		shadow = calculateShadow(f_in.lightSpacePos, normDir, lightDir);
+	}
+
+	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
+	vec3 finalColor = ambient + shadow * (diffuse + specular);
+
+	if (uEnableReflections) {
+		// Mix environment color with PBR lighting, ReflectionBlend controls how much
+		finalColor = mix(environmentColor, finalColor, 1.0 - uReflectionBlend) + specular * 0.5;
+	}
+
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
 	fb_color = vec4(finalColor, alpha);

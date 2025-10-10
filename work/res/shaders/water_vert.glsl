@@ -3,10 +3,12 @@
 // uniform data
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
+uniform mat4 uLightSpaceMatrix;
 // Current time for animating waves displacement.
 uniform float uTime;
 uniform float meshScale;
 uniform float waterSpeed;
+uniform float waterAmplitude;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -21,12 +23,14 @@ out VertexData{
 	vec2 textureCoord;
     vec3 tangent; // "Tangent vectors" required for normal mapping.
     vec3 bitangent; // Part of TBN matrix structure mentioned in lecture.
+	vec4 lightSpacePos;
+	vec4 clipSpace; // Projective texture mapping
 } v_out;
 
 void main() {
     // Wave displacement animation. Scales by mesh size.
     float frequency = 120.0f;
-    float amplitude = meshScale / 1500.0f;
+    float amplitude = waterAmplitude;
     float speed = waterSpeed * 4.0f;
     float displacement = sin(cos(sin(uv.x)) * frequency + uTime * speed) + cos(cos(uv.y) * frequency/2.0f + uTime * speed);
     vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
@@ -55,6 +59,12 @@ void main() {
     v_out.tangent = normalize((uModelViewMatrix * vec4(tangent, 0.0)).xyz);
     v_out.bitangent = normalize((uModelViewMatrix * vec4(bitangent, 0.0)).xyz);
 
+	// Calculate light space position for shadow mapping
+	v_out.lightSpacePos = uLightSpaceMatrix * vec4(newPosition, 1.0);
+
     // Set the screenspace position (needed for converting to fragment data)
     gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(newPosition, 1.0f);
+
+	// Store clip space position for projective texture mapping in fragment shader
+	v_out.clipSpace = gl_Position;
 }

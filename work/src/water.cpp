@@ -22,7 +22,6 @@ Water::Water() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	string pathStart = CGRA_SRCDIR + string("/res/textures/") + "water";
-
 	{
 		PerformanceTimer timer("    - water_albedo.png");
 		rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
@@ -33,6 +32,11 @@ Water::Water() {
 		PerformanceTimer timer("    - water_normal.png");
 		rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
 		normalMap = normalImage.uploadTexture();
+	}
+	{
+		PerformanceTimer timer("    - water_dudv.png");
+		rgba_image dudvImage = rgba_image(pathStart + string("_dudv.png"));
+		dudvMap = dudvImage.uploadTexture();
 	}
 
 	// Get starting time for animations to base off.
@@ -57,14 +61,20 @@ void Water::setShaderParams() {
 
 	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 	glUniform1f(glGetUniformLocation(shader, "meshScale"), meshScale);
-
-	// Send uniform for water speed and height.
-	glUniform1f(glGetUniformLocation(shader, "waterSpeed"), waterSpeed);
-	glUniform1f(glGetUniformLocation(shader, "waterHeight"), waterHeight);
 }
 
 
-void Water::draw(const mat4& view, const mat4& proj, const vec3& lightDirection, const vec3& lightColor) {
+void Water::draw(const mat4& view, const mat4& proj,
+				  const vec3& lightDirection, const vec3& lightColor,
+				  const mat4& lightSpaceMatrix,
+				  GLuint shadowMapTexture,
+				  bool enableShadows,
+				  bool usePCF,
+				  GLuint reflectionTexture,
+				  GLuint refractionTexture,
+				  bool enableReflections,
+				  float waveStrength,
+				  float reflectionBlend) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -72,15 +82,53 @@ void Water::draw(const mat4& view, const mat4& proj, const vec3& lightDirection,
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 
 	// Lighting params
-	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirection));
+	vec3 lightDirViewSpace = mat3(view) * lightDirection;
+	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirViewSpace));
 	glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
 	glUniform1f(glGetUniformLocation(shader, "alpha"), waterAlpha);
-	
+
 	float currentTime = (float)glfwGetTime() - startTime;
 	glUniform1f(glGetUniformLocation(shader, "uTime"), currentTime);
+
+	// Send uniform for water speed and height.
+	glUniform1f(glGetUniformLocation(shader, "waterSpeed"), waterSpeed);
+	//glUniform1f(glGetUniformLocation(shader, "waterHeight"), waterHeight); // For terrain transitions
+	glUniform1f(glGetUniformLocation(shader, "waterAmplitude"), waterAmplitude);
+
+	// Re-bind water textures (fix for water texture disappering)
+	glActiveTexture(GL_TEXTURE22);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glActiveTexture(GL_TEXTURE23);
+	glBindTexture(GL_TEXTURE_2D, normalMap);
+
+	// Shadow params
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
+
+	glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
+	glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 20);
+	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
+	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
+
+	// Water reflection/refraction params
+	glActiveTexture(GL_TEXTURE24);
+	glBindTexture(GL_TEXTURE_2D, reflectionTexture);
+	glUniform1i(glGetUniformLocation(shader, "uReflectionTexture"), 24);
+
+	glActiveTexture(GL_TEXTURE25);
+	glBindTexture(GL_TEXTURE_2D, refractionTexture);
+	glUniform1i(glGetUniformLocation(shader, "uRefractionTexture"), 25);
+
+	glActiveTexture(GL_TEXTURE26);
+	glBindTexture(GL_TEXTURE_2D, dudvMap);
+	glUniform1i(glGetUniformLocation(shader, "uDuDvMap"), 26);
+
+	glUniform1i(glGetUniformLocation(shader, "uEnableReflections"), enableReflections ? 1 : 0);
+	glUniform1f(glGetUniformLocation(shader, "uWaveStrength"), waveStrength);
+	glUniform1f(glGetUniformLocation(shader, "uReflectionBlend"), reflectionBlend);
 
 	// Draw the terrain mesh.
 	waterMesh.draw();

@@ -85,7 +85,8 @@ vec2 PerlinNoise::getHeightRange() {
 }
 
 
-void PerlinNoise::draw(const mat4& view, const mat4& proj) {
+void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpaceMatrix, GLuint shadowMapTexture,
+					   bool enableShadows, bool usePCF) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -93,11 +94,20 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj) {
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uModelViewMatrix"), 1, false, value_ptr(view * modelTransform));
 
 	// Lighting params
-	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirection));
+	vec3 lightDirViewSpace = mat3(view) * lightDirection;
+	glUniform3fv(glGetUniformLocation(shader, "lightDirection"), 1, value_ptr(lightDirViewSpace));
 	glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
 	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+
+	// Shadow params
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
+	glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 20);
+	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
+	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
 
 	// Draw the terrain mesh.
 	terrain.draw();

@@ -14,6 +14,8 @@ layout(location = 6) in vec4 aInstanceMatrix3;
 // Uniforms
 uniform mat4 uProjectionMatrix;
 uniform mat4 uViewMatrix;
+uniform mat4 uLightSpaceMatrix;
+uniform vec4 uClipPlane;
 
 // Output to fragment shader
 out VertexData {
@@ -21,7 +23,10 @@ out VertexData {
     vec3 normal;
     vec2 texCoord;
     mat3 TBN;
+	vec4 lightSpacePos;
 } v_out;
+
+out float gl_ClipDistance[1];
 
 void main() {
     // Reconstruct instance matrix from 4 vec4s
@@ -58,6 +63,11 @@ void main() {
     v_out.TBN = mat3(tangent, bitangent, normal);
 
     v_out.texCoord = aTexCoord;
+
+	// Calculate light space position for shadow mapping
+	v_out.lightSpacePos = uLightSpaceMatrix * worldPos;
+
+	gl_ClipDistance[0] = dot(worldPos, uClipPlane);
 
     // Final position
     gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
