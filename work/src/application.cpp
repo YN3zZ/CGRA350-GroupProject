@@ -372,6 +372,7 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 }
 
 void Application::render() {
+
 	// 1st pass: Reflection
 	if (m_enable_water_reflections) {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
@@ -409,16 +410,15 @@ void Application::render() {
 		mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 		mat4 lightSpaceMatrix = getLightSpaceMatrix();
-		vec4 clipPlane(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f);
+		vec4 clipPlane(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f); // Clip below water.
 
 		renderScene(reflectionView, proj, lightSpaceMatrix, true, clipPlane);
 
 		glDisable(GL_CLIP_DISTANCE0);
 		glFrontFace(GL_CW);
-	}
 
-	// 2nd pass: Refraction
-	if (m_enable_water_reflections) {
+		// 2nd pass: Refraction
+
 		glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
 		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
 		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
@@ -431,9 +431,8 @@ void Application::render() {
 		glFrontFace(GL_CW);
 		glEnable(GL_CLIP_DISTANCE0);
 
-		int width, height;
 		glfwGetFramebufferSize(m_window, &width, &height);
-		mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
+		proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 		mat4 view;
 		if (firstPersonCamera) {
@@ -446,23 +445,23 @@ void Application::render() {
 				* rotate(mat4(1), m_yaw, vec3(0, 1, 0));
 		}
 
-		mat4 lightSpaceMatrix = getLightSpaceMatrix();
-		float waterHeight = m_cached_water_height; // Use cached height
-		vec4 clipPlane(0.0f, -1.0f, 0.0f, waterHeight + 0.1f); // Clip above water
+		lightSpaceMatrix = getLightSpaceMatrix();
+		clipPlane = vec4(0.0f, -1.0f, 0.0f, waterHeight + 0.1f); // Clip above water
 
 		renderScene(view, proj, lightSpaceMatrix, true, clipPlane);
 
 		glDisable(GL_CLIP_DISTANCE0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	// 3rd pass: Shadow map
+	
 	// Only render shadows when sun is above horizon
 	if (m_enable_shadows && m_sunElevation > -5.0f) {
 		renderShadowMap();
 	}
 
 	// 4th pass: main rendering
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// retrieve the window height
 	int width, height;
@@ -579,7 +578,7 @@ void Application::renderGUI() {
     ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
     ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
     ImGui::Checkbox("First person camera", &firstPersonCamera);
-    ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.01f, 0.2f, "%.2f", 2.0f);
+    ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.01f, 0.5f, "%.2f");
 
     // helpful drawing options
     ImGui::Checkbox("Show axis", &m_show_axis);
@@ -686,7 +685,7 @@ void Application::renderGUI() {
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
-  }
+	}
 
 	ImGui::Separator();
 	ImGui::Text("Sun & Lighting");
