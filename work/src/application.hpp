@@ -69,7 +69,7 @@ private:
 	GLuint m_sunShader = 0;
 	float m_sunIntensity = 1.5f;
 	float m_sunAzimuth = 0.0f;
-	float m_sunElevation = 30.0f;
+	float m_sunElevation = 50.0f;
 	float m_sunDistance = 500.0f;
 
 	// Shadow mapping

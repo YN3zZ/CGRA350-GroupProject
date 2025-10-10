@@ -160,7 +160,7 @@ void main() {
 
 	// Make deeper parts of waves darker.
 	float proportion = (f_in.displacement / 4.0f) + 0.5f;
-	textureColor = mix(textureColor * 0.6f, textureColor, proportion);
+	textureColor = mix(textureColor * 0.7f, textureColor, proportion);
 
 	// Ambient light.
 	float ambientStrength = 0.15f;

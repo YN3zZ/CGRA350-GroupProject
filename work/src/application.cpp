@@ -404,7 +404,7 @@ void Application::render() {
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(350, 800), ImGuiSetCond_Once); // (width, height)
+    ImGui::SetNextWindowSize(ImVec2(350, 900), ImGuiSetCond_Once); // (width, height)
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
@@ -442,6 +442,23 @@ void Application::renderGUI() {
         m_water.meshResolution = m_terrain.meshResolution;
     }
 	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 1.0f, 200.0f, "%.1f");
+
+	bool meshNeedsUpdate = false;
+	// Generates the mesh and shaders for terrain and water.
+	if (ImGui::Button("Generate")) {
+		meshNeedsUpdate = true;
+		m_terrain.createMesh();
+		m_terrain.setShaderParams();
+		m_water.createMesh();
+		m_water.setShaderParams();
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Water Parameters");
+	ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
+	ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
+	ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
+	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.5f, "%.3f", 4.0f);
 
 	ImGui::Separator();
 	ImGui::Text("Sun & Lighting");
@@ -501,24 +518,7 @@ void Application::renderGUI() {
 		}
 	}
 
-    // L-System parameters that affect mesh generation
-    bool meshNeedsUpdate = false;
-
-	ImGui::Separator();
-    ImGui::Text("Water Parameters");
-    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
-    ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
-    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
-
-    // Generates the mesh and shaders for terrain and water.
-    if (ImGui::Button("Generate")) {
-        meshNeedsUpdate = true;
-        m_terrain.createMesh();
-        m_terrain.setShaderParams();
-        m_water.createMesh();
-        m_water.setShaderParams();
-    }
-
+    // L-System parameters that affect mesh generation.
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
