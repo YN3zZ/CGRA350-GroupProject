@@ -48,19 +48,11 @@ void Water::setShaderParams() {
 
 	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 	glUniform1f(glGetUniformLocation(shader, "meshScale"), meshScale);
-
-	// Send uniform for water speed and height.
-	glUniform1f(glGetUniformLocation(shader, "waterSpeed"), waterSpeed);
-	glUniform1f(glGetUniformLocation(shader, "waterHeight"), waterHeight);
 }
 
 
-void Water::draw(const mat4& view, const mat4& proj,
-				  const vec3& lightDirection, const vec3& lightColor,
-				  const mat4& lightSpaceMatrix,
-				  GLuint shadowMapTexture,
-				  bool enableShadows,
-				  bool usePCF) {
+void Water::draw(const mat4& view, const mat4& proj, const vec3& lightDirection, const vec3& lightColor, 
+				const mat4& lightSpaceMatrix, GLuint shadowMapTexture, bool enableShadows, bool usePCF) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -78,6 +70,11 @@ void Water::draw(const mat4& view, const mat4& proj,
 
 	float currentTime = (float)glfwGetTime() - startTime;
 	glUniform1f(glGetUniformLocation(shader, "uTime"), currentTime);
+
+	// Send uniform for water speed and height.
+	glUniform1f(glGetUniformLocation(shader, "waterSpeed"), waterSpeed);
+	//glUniform1f(glGetUniformLocation(shader, "waterHeight"), waterHeight); // For terrain transitions
+	glUniform1f(glGetUniformLocation(shader, "waterAmplitude"), waterAmplitude);
 
 	// Re-bind water textures (fix for water texture disappering)
 	glActiveTexture(GL_TEXTURE22);

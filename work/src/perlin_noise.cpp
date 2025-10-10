@@ -76,11 +76,8 @@ vec2 PerlinNoise::getHeightRange() {
 }
 
 
-void PerlinNoise::draw(const mat4& view, const mat4& proj,
-					   const mat4& lightSpaceMatrix,
-					   GLuint shadowMapTexture,
-					   bool enableShadows,
-					   bool usePCF) {
+void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpaceMatrix, GLuint shadowMapTexture,
+					   bool enableShadows, bool usePCF) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.

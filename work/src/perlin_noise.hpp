@@ -45,11 +45,8 @@ public:
 
 	// Constructor and public methods.
 	PerlinNoise();
-	void draw(const glm::mat4& view, const glm::mat4& proj,
-			  const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
-			  GLuint shadowMapTexture = 0,
-			  bool enableShadows = false,
-			  bool usePCF = true);
+	void draw(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
+			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
 	glm::vec3 sampleVertex(glm::vec2 position);

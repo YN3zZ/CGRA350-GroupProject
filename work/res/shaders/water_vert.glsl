@@ -8,6 +8,7 @@ uniform mat4 uLightSpaceMatrix;
 uniform float uTime;
 uniform float meshScale;
 uniform float waterSpeed;
+uniform float waterAmplitude;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -28,7 +29,7 @@ out VertexData{
 void main() {
     // Wave displacement animation. Scales by mesh size.
     float frequency = 120.0f;
-    float amplitude = meshScale / 1500.0f;
+    float amplitude = waterAmplitude;
     float speed = waterSpeed * 4.0f;
     float displacement = sin(cos(sin(uv.x)) * frequency + uTime * speed) + cos(cos(uv.y) * frequency/2.0f + uTime * speed);
     vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
