@@ -33,7 +33,7 @@ public:
 	float meshHeight = 8.0f; // Overall height.
 	float meshScale = 10.0f; // Overall size of mesh.
 	int meshResolution = 50; // Square this to get total vertices.
-	float textureScale = 25.0f; // Size of texture.
+	float textureScale = 15.0f; // Size of texture.
 	std::vector<cgra::mesh_vertex> vertices;
 
 	// Lighting params.
