@@ -243,7 +243,8 @@ void main() {
 	bool linearFog = false; // User controls this.
 
 	float fogFactor;
-	vec3 fogColor = vec3(0.4f); // Make based on sun.
+	float desaturated = 0.5f;
+	vec3 fogColor = mix(lightColor, vec3(0.5f), desaturated); // Desaturate light color.
 	float dist = length(f_in.position);
 	if (linearFog) {
 		float fogMin = 0.1;
@@ -253,7 +254,7 @@ void main() {
 		fogFactor = (fogMax - dist) / (fogMax - fogMin);
 	}
 	else {
-		float fogDensity = 0.05f; // User controls this.
+		float fogDensity = 0.02f; // User controls this.
 		fogFactor = exp(-fogDensity * dist);
 	}
 	fogFactor = clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
