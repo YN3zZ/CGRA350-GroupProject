@@ -205,7 +205,6 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Build shadow depth shader
     shader_builder sb_shadow;
     sb_shadow.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_vert.glsl"));
-    sb_shadow.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_frag.glsl"));
     m_shadow_depth_shader = sb_shadow.build();
 
     // Create shadow map framebuffer
