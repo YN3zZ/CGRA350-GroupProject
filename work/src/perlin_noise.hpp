@@ -33,7 +33,7 @@ public:
 	float meshHeight = 8.0f; // Overall height.
 	float meshScale = 10.0f; // Overall size of mesh.
 	int meshResolution = 50; // Square this to get total vertices.
-	float textureScale = 1.0f; // Size of texture.
+	float textureScale = 25.0f; // Size of texture.
 	std::vector<cgra::mesh_vertex> vertices;
 
 	// Lighting params.
@@ -45,11 +45,8 @@ public:
 
 	// Constructor and public methods.
 	PerlinNoise();
-	void draw(const glm::mat4& view, const glm::mat4& proj,
-			  const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
-			  GLuint shadowMapTexture = 0,
-			  bool enableShadows = false,
-			  bool usePCF = true);
+	void draw(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
+			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
 	glm::vec3 sampleVertex(glm::vec2 position);

@@ -23,7 +23,8 @@ uniform bool uUsePCF;
 
 // viewspace data (this must match the output of the fragment shader)
 in VertexData {
-	float globalHeight;
+	vec3 globalPos;
+	vec3 globalNormal;
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
@@ -135,12 +136,32 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 }
 
 
+// Blend textures from 3 axes instead of 1, for consistent texture tiling on stretched slopes.
+vec3 triplanarSample(sampler2D tex, vec3 pos, vec3 norm) {
+	// Normalize weights (absolute normal for blending)
+	vec3 blending = normalize(abs(norm));
+	blending /= (blending.x + blending.y + blending.z);
+
+	// Scale texture coordinates for each pair of axes.
+	vec2 xProj = pos.yz * textureScale;
+	vec2 yProj = pos.xz * textureScale;
+	vec2 zProj = pos.xy * textureScale;
+
+	// Sample texture from each axis pair projection.
+	vec3 xTex = texture(tex, xProj).rgb;
+	vec3 yTex = texture(tex, yProj).rgb;
+	vec3 zTex = texture(tex, zProj).rgb;
+
+	// Blend results
+	return xTex * blending.x + yTex * blending.y + zTex * blending.z;
+}
+
+
 void main() {
 	// Getting height proportion to map texture color based on terrain height.
 	float minHeight = heightRange.x;
 	float maxHeight = heightRange.y;
-	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalHeight);
-	vec2 uv = f_in.textureCoord * textureScale;
+	float heightProportion = smoothstep(minHeight, maxHeight, f_in.globalPos.y);
 	
 	// Scale height to the texture array.
 	float scaledHeight = heightProportion * numTextures;
@@ -151,8 +172,8 @@ void main() {
 	for (int i = 0; i < numTextures; i++) {
 		// Weight for how close the current height is to the middle of the textures band.
 		float weight = max(1.0 - abs(scaledHeight - i - 0.5f), 0.0f);
-		textureColor += texture(uTextures[i], uv).rgb * weight;
-		normalMap += texture(uNormalMaps[i], uv).rgb * weight;
+		textureColor += triplanarSample(uTextures[i], f_in.globalPos, f_in.globalNormal) * weight;
+		normalMap += triplanarSample(uNormalMaps[i], f_in.globalPos, f_in.globalNormal) * weight;
 		totalWeight += weight;
 	}
 	// Normalize so the sum of contributions is 1 (solid texture to avoid light/dark patches).
