@@ -205,7 +205,6 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Build shadow depth shader
     shader_builder sb_shadow;
     sb_shadow.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_vert.glsl"));
-    sb_shadow.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_frag.glsl"));
     m_shadow_depth_shader = sb_shadow.build();
 
     // Create shadow map framebuffer
@@ -491,18 +490,20 @@ void Application::render() {
         vec3 right = vec3(cos(angle), 0.0f, -sin(angle));
 
         // Add the key movement together to allow diagonal movement.
-        vec3 cameraMove(0.0f);
-        if (wPressed) cameraMove += forward;
-        if (sPressed) cameraMove -= forward;
-        if (dPressed) cameraMove += right;
-        if (aPressed) cameraMove -= right;
-        if (spacePressed) cameraMove += up;
-        if (shiftPressed) cameraMove -= up;
+        vec3 horizontalMove(0.0f);
+		vec3 verticalMove(0.0f);
+        if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) horizontalMove += forward;
+        if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) horizontalMove -= forward;
+        if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) horizontalMove += right;
+        if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) horizontalMove -= right;
+        if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) verticalMove += up;
+        if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) verticalMove -= up;
 
         // Opposing directions cancel out and normalise makes diagonal movement the same speed as straight.
-        if (length(cameraMove) > 0) {
-            cameraPosition += normalize(cameraMove) * cameraSpeed;
-        }
+        if (length(horizontalMove) > 0) {
+			horizontalMove = normalize(horizontalMove);
+		} 
+		cameraPosition += (verticalMove + horizontalMove) * cameraSpeed;
     }
 
 	// projection matrix
@@ -569,7 +570,7 @@ void Application::render() {
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(350, 800), ImGuiSetCond_Once); // (width, height)
+    ImGui::SetNextWindowSize(ImVec2(400, 950), ImGuiSetCond_Once); // (width, height)
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
@@ -597,7 +598,6 @@ void Application::renderGUI() {
 	ImGui::SliderFloat("Lacunarity", &m_terrain.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
 	ImGui::SliderFloat("Noise Scale", &m_terrain.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
 	ImGui::SliderInt("Octaves", &m_terrain.noiseOctaves, 1, 10, "%.0f");
-	ImGui::Separator();
 	ImGui::SliderFloat("Mesh Height", &m_terrain.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
     // Water is the same size and resolution as the terrain.
     if (ImGui::SliderFloat("Mesh Size", &m_terrain.meshScale, 2.0f, 500.0f, "%.1f", 4.0f)) {
@@ -606,74 +606,25 @@ void Application::renderGUI() {
     if (ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f")) {
         m_water.meshResolution = m_terrain.meshResolution;
     }
-	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 0.1f, 5.0f, "%.1f");
+	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 1.0f, 200.0f, "%.1f");
 
-	ImGui::Separator();
-	ImGui::Text("Sun & Lighting");
-	if (ImGui::SliderFloat("Sun Azimuth", &m_sunAzimuth, 0.0f, 360.0f, "%.1f°")) {
-		updateLightFromSun();
+	bool meshNeedsUpdate = false;
+	// Generates the mesh and shaders for terrain and water.
+	if (ImGui::Button("Generate")) {
+		meshNeedsUpdate = true;
+		m_terrain.createMesh();
+		m_terrain.setShaderParams();
+		m_water.createMesh();
+		m_water.setShaderParams();
+    m_cached_water_height = m_water.waterHeight;
 	}
-	if (ImGui::SliderFloat("Sun Elevation", &m_sunElevation, -90.0f, 90.0f, "%.1f°")) {
-		updateLightFromSun();
-	}
-	if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
-		updateLightFromSun();
-	}
-
-	ImGui::Separator();
-	ImGui::Text("Shadow Settings");
-	ImGui::Checkbox("Enable Shadows", &m_enable_shadows);
-	if (m_enable_shadows) {
-		ImGui::Checkbox("Use PCF (Soft Shadows)", &m_use_pcf);
-		const char* shadowMapSizes[] = {"512", "1024", "2048", "4096"};
-		int currentSizeIndex = 3;
-		if (m_shadow_map_size == 512) currentSizeIndex = 0;
-		else if (m_shadow_map_size == 1024) currentSizeIndex = 1;
-		else if (m_shadow_map_size == 2048) currentSizeIndex = 2;
-		else if (m_shadow_map_size == 4096) currentSizeIndex = 3;
-
-		if (ImGui::Combo("Shadow Map Size", &currentSizeIndex, shadowMapSizes, 4)) {
-			int newSize = 2048;
-			if (currentSizeIndex == 0) newSize = 512;
-			else if (currentSizeIndex == 1) newSize = 1024;
-			else if (currentSizeIndex == 2) newSize = 2048;
-			else if (currentSizeIndex == 3) newSize = 4096;
-
-			if (newSize != m_shadow_map_size) {
-				m_shadow_map_size = newSize;
-				// Recreate shadow map texture with new size
-				// to make sure we're not interfering with any active texture units
-				GLint currentTexture;
-				glGetIntegerv(GL_ACTIVE_TEXTURE, &currentTexture);
-
-				glActiveTexture(GL_TEXTURE11);
-				glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_shadow_map_size, m_shadow_map_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-				// Enable shadow comparison mode for sampler2DShadow
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
-				// Restore previous active texture unit
-				glActiveTexture(currentTexture);
-			}
-		}
-	}
-
-    // L-System parameters that affect mesh generation
-    bool meshNeedsUpdate = false;
 
 	ImGui::Separator();
     ImGui::Text("Water Parameters");
     ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
     ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
+	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.5f, "%.3f", 4.0f);
 	ImGui::Checkbox("Enable Water Reflections", &m_enable_water_reflections);
 	if (m_enable_water_reflections) {
 		ImGui::SliderFloat("Wave Distortion Strength", &m_water_wave_strength, 0.0f, 0.3f, "%.3f");
@@ -735,18 +686,67 @@ void Application::renderGUI() {
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
+  }
+
+	ImGui::Separator();
+	ImGui::Text("Sun & Lighting");
+	if (ImGui::SliderFloat("Sun Azimuth", &m_sunAzimuth, 0.0f, 360.0f, "%.1f°")) {
+		updateLightFromSun();
+	}
+	if (ImGui::SliderFloat("Sun Elevation", &m_sunElevation, -90.0f, 90.0f, "%.1f°")) {
+		updateLightFromSun();
+	}
+	if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
+		updateLightFromSun();
 	}
 
-    // Generates the mesh and shaders for terrain and water.
-    if (ImGui::Button("Generate")) {
-        meshNeedsUpdate = true;
-        m_terrain.createMesh();
-        m_terrain.setShaderParams();
-        m_water.createMesh();
-        m_water.setShaderParams();
-        m_cached_water_height = m_water.waterHeight;
-    }
+	ImGui::Separator();
+	ImGui::Text("Shadow Settings");
+	ImGui::Checkbox("Enable Shadows", &m_enable_shadows);
+	if (m_enable_shadows) {
+		ImGui::Checkbox("Use PCF (Soft Shadows)", &m_use_pcf);
+		const char* shadowMapSizes[] = {"512", "1024", "2048", "4096"};
+		int currentSizeIndex = 3;
+		if (m_shadow_map_size == 512) currentSizeIndex = 0;
+		else if (m_shadow_map_size == 1024) currentSizeIndex = 1;
+		else if (m_shadow_map_size == 2048) currentSizeIndex = 2;
+		else if (m_shadow_map_size == 4096) currentSizeIndex = 3;
 
+		if (ImGui::Combo("Shadow Map Size", &currentSizeIndex, shadowMapSizes, 4)) {
+			int newSize = 2048;
+			if (currentSizeIndex == 0) newSize = 512;
+			else if (currentSizeIndex == 1) newSize = 1024;
+			else if (currentSizeIndex == 2) newSize = 2048;
+			else if (currentSizeIndex == 3) newSize = 4096;
+
+			if (newSize != m_shadow_map_size) {
+				m_shadow_map_size = newSize;
+				// Recreate shadow map texture with new size
+				// to make sure we're not interfering with any active texture units
+				GLint currentTexture;
+				glGetIntegerv(GL_ACTIVE_TEXTURE, &currentTexture);
+
+				glActiveTexture(GL_TEXTURE11);
+				glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_shadow_map_size, m_shadow_map_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+				// Enable shadow comparison mode for sampler2DShadow
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+				// Restore previous active texture unit
+				glActiveTexture(currentTexture);
+			}
+		}
+	}
+  
+    // L-System parameters that affect mesh generation
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
     
@@ -849,25 +849,7 @@ void Application::scrollCallback(double xoffset, double yoffset) {
 
 
 void Application::keyCallback(int key, int scancode, int action, int mods) {
-    // Pressed is 1, released is 0. Cast to bool for moving each frame.
-    if (key == GLFW_KEY_W) {
-        wPressed = (bool)action; 
-    }
-    else if (key == GLFW_KEY_A) {
-        aPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_S) {
-        sPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_D) {
-        dPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_LEFT_SHIFT) {
-        shiftPressed = (bool)action;
-    }
-    else if (key == GLFW_KEY_SPACE) {
-        spacePressed = (bool)action;
-    }
+	(void)key, (void)scancode, (void)action, (void)mods; // currently un-used
 }
 
 

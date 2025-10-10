@@ -16,6 +16,7 @@ uniform float alpha;
 // Current time for animating waves texture.
 uniform float uTime;
 uniform float waterSpeed;
+uniform float waterAmplitude;
 // A single texture and normal map.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
@@ -160,7 +161,7 @@ void main() {
 
 	// Texture wave animation. Might make these controllable in UI.
 	float frequency = 1.0f;
-	float amplitude = 0.05f - meshScale / 15000.0f;
+	float amplitude = waterAmplitude;
 	// Both UV x and y have waves. Some scrolling is added to make it move around. Gives the appeearance of moving water.
 	float scrollAmount = uTime * waterSpeed * 0.01f;
 	vec2 oldUV = uv.xy;
@@ -193,7 +194,7 @@ void main() {
 
 	// Make deeper parts of waves darker.
 	float proportion = (f_in.displacement / 4.0f) + 0.5f;
-	textureColor = mix(textureColor * 0.6f, textureColor, proportion);
+	textureColor = mix(textureColor * 0.7f, textureColor, proportion);
 
 	// Ambient light.
 	float ambientStrength = 0.15f;
