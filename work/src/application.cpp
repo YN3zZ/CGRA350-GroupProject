@@ -404,7 +404,7 @@ void Application::render() {
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(350, 900), ImGuiSetCond_Once); // (width, height)
+    ImGui::SetNextWindowSize(ImVec2(400, 950), ImGuiSetCond_Once); // (width, height)
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
@@ -432,7 +432,6 @@ void Application::renderGUI() {
 	ImGui::SliderFloat("Lacunarity", &m_terrain.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
 	ImGui::SliderFloat("Noise Scale", &m_terrain.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
 	ImGui::SliderInt("Octaves", &m_terrain.noiseOctaves, 1, 10, "%.0f");
-	ImGui::Separator();
 	ImGui::SliderFloat("Mesh Height", &m_terrain.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
     // Water is the same size and resolution as the terrain.
     if (ImGui::SliderFloat("Mesh Size", &m_terrain.meshScale, 2.0f, 500.0f, "%.1f", 4.0f)) {
