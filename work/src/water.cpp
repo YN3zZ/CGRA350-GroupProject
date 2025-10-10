@@ -121,6 +121,9 @@ void Water::draw(const mat4& view, const mat4& proj,
 
 	// Draw the terrain mesh.
 	waterMesh.draw();
+
+	// Restore active texture to GL_TEXTURE20 (shadow map) to prevent conflicts
+	glActiveTexture(GL_TEXTURE20);
 }
 
 
