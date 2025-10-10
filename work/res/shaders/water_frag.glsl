@@ -148,6 +148,25 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 }
 
 
+float calculateFog() {
+	float fogFactor;
+	bool linearFog = false; // User controls this.
+	float dist = length(f_in.position);
+	if (linearFog) {
+		float fogMin = 0.1;
+		float fogMax = 30.0; // User controls this.
+		// Inverse linear min-max scaling so that far away is 0 and close is 1.
+		fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	}
+	else {
+		// Expoential scaling.
+		float fogDensity = 0.02f; // User controls this.
+		fogFactor = exp(-fogDensity * dist);
+	}
+	return clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
+}
+
+
 void main() {
 	// Sky color. May make controllable later.
 	vec3 skyColor = vec3(0.5f, 0.65f, 0.8f);
@@ -268,8 +287,16 @@ void main() {
 		shadow = calculateShadow(f_in.lightSpacePos, normDir, lightDir);
 	}
 
+	// Calculate fog based on distance to camera.
+	float fogFactor = calculateFog();
+	// Desaturate light color for fog.
+	float desaturated = 0.5f;
+	vec3 fogColor = mix(lightColor, vec3(0.5f), desaturated);
+
+
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
 
 	if (uEnableReflections) {
 		// Mix environment color with PBR lighting, ReflectionBlend controls how much

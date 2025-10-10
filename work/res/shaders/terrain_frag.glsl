@@ -157,6 +157,25 @@ vec3 triplanarSample(sampler2D tex, vec3 pos, vec3 norm) {
 }
 
 
+float calculateFog() {
+	float fogFactor;
+	bool linearFog = false; // User controls this.
+	float dist = length(f_in.position);
+	if (linearFog) {
+		float fogMin = 0.1;
+		float fogMax = 30.0; // User controls this.
+		// Inverse linear min-max scaling so that far away is 0 and close is 1.
+		fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	}
+	else {
+		// Expoential scaling.
+		float fogDensity = 0.02f; // User controls this.
+		fogFactor = exp(-fogDensity * dist);
+	}
+	return clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
+}
+
+
 void main() {
 	// Getting height proportion to map texture color based on terrain height.
 	float minHeight = heightRange.x;
@@ -240,28 +259,14 @@ void main() {
 	}
 
 	// Calculate fog based on distance to camera.
-	bool linearFog = false; // User controls this.
-
-	float fogFactor;
-	float desaturated = 0.5f;
-	vec3 fogColor = mix(lightColor, vec3(0.5f), desaturated); // Desaturate light color.
-	float dist = length(f_in.position);
-	if (linearFog) {
-		float fogMin = 0.1;
-		float fogMax = 30.0; // User controls this.
-
-		// Inverse min-max scaling so that far away is 0 and close is 1.
-		fogFactor = (fogMax - dist) / (fogMax - fogMin);
-	}
-	else {
-		float fogDensity = 0.02f; // User controls this.
-		fogFactor = exp(-fogDensity * dist);
-	}
-	fogFactor = clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
+	float fogFactor = calculateFog();
+	// Desaturate light color for fog.
+	float desaturated = 0.5f; 
+	vec3 fogColor = mix(lightColor, vec3(0.5f), desaturated);
 
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
-	finalColor = mix(fogColor, finalColor, fogFactor);
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
 	fb_color = vec4(finalColor, 1.0f);
