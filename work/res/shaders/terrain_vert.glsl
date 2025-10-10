@@ -12,7 +12,8 @@ layout(location = 2) in vec2 aTexCoord;
 
 // model data (this must match the input of the fragment shader)
 out VertexData {
-	float globalHeight;
+	vec3 globalPos;
+	vec3 globalNormal; // For triplanar texturing.
 	vec3 position;
 	vec3 normal;
 	vec2 textureCoord;
@@ -22,8 +23,9 @@ out VertexData {
 } v_out;
 
 void main() {
-	// Send untransformed global y position for texture mapping based on height proportion.
-	v_out.globalHeight = aPosition.y;
+	// Send untransformed global position for texture mapping based on height proportion.
+	v_out.globalPos = aPosition;
+	v_out.globalNormal = aNormal; // Need the global normal for triplanar sampling.
 
 	// transform vertex data to viewspace
 	v_out.position = (uModelViewMatrix * vec4(aPosition, 1)).xyz;
