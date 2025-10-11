@@ -19,6 +19,7 @@ public:
 	cgra::gl_mesh terrain;
 	GLuint shader = 0;
 	glm::mat4 modelTransform{ 1.0f };
+	GLuint heightMap = 0;
 
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
 	float noisePersistence = 0.4f; // Height loss between octaves.
