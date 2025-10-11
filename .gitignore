@@ -7,6 +7,8 @@ build/
 out/
 bin/
 lib/
+# Build script generated for convenience and speed
+build.sh
 
 # CMake generated files
 CMakeCache.txt

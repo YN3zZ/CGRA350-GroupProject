@@ -63,7 +63,8 @@ void Water::draw(const mat4& view, const mat4& proj,
 				  GLuint refractionTexture,
 				  bool enableReflections,
 				  float waveStrength,
-				  float reflectionBlend) {
+				  float reflectionBlend,
+				  bool enableLensFlare) {
 	// set up the shader for every draw call
 	glUseProgram(shader);
 	// Set model, view and projection matrices.
@@ -118,9 +119,13 @@ void Water::draw(const mat4& view, const mat4& proj,
 	glUniform1i(glGetUniformLocation(shader, "uEnableReflections"), enableReflections ? 1 : 0);
 	glUniform1f(glGetUniformLocation(shader, "uWaveStrength"), waveStrength);
 	glUniform1f(glGetUniformLocation(shader, "uReflectionBlend"), reflectionBlend);
+	glUniform1i(glGetUniformLocation(shader, "uEnableLensFlare"), enableLensFlare ? 1 : 0);
 
 	// Draw the terrain mesh.
 	waterMesh.draw();
+
+	// Restore active texture to GL_TEXTURE20 (shadow map) to prevent conflicts
+	glActiveTexture(GL_TEXTURE20);
 }
 
 

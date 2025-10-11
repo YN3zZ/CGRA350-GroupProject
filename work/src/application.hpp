@@ -71,6 +71,7 @@ private:
 	float m_sunAzimuth = 0.0f;
 	float m_sunElevation = 50.0f;
 	float m_sunDistance = 500.0f;
+	glm::vec2 m_sun_screen_pos = glm::vec2(0.5f, 0.5f);  // Sun position in screen space [0-1]
 
 	// Shadow mapping
 	GLuint m_shadow_map_fbo = 0;
@@ -98,7 +99,47 @@ private:
 	float m_water_wave_strength = 0.03f;
 	float m_water_reflection_blend = 0.7f;
 	float m_cached_water_height = -0.4f;
-	
+
+	// Lens flare post-processing
+	GLuint m_scene_fbo = 0;
+	GLuint m_scene_texture = 0;
+	GLuint m_scene_depth_buffer = 0;
+	GLuint m_lens_flare_fbo = 0;
+	GLuint m_lens_flare_texture = 0;
+	GLuint m_bright_parts_fbo = 0;
+	GLuint m_bright_parts_texture = 0;
+	GLuint m_pingpong_fbo[2] = {0, 0};
+	GLuint m_pingpong_texture[2] = {0, 0};
+	GLuint m_bright_parts_shader = 0;
+	GLuint m_gaussian_blur_shader = 0;
+	GLuint m_lens_flare_ghost_shader = 0;
+	GLuint m_lens_flare_composite_shader = 0;
+	GLuint m_lens_color_texture = 0;
+	GLuint m_lens_texture = 0;
+	GLuint m_lens_dirt_texture = 0;
+	GLuint m_lens_starburst_texture = 0;
+	GLuint m_screen_quad_vao = 0;
+	GLuint m_screen_quad_vbo = 0;
+
+	// Lens flare parameters
+	bool m_enable_lens_flare = true;
+	float m_bright_threshold = 1.0f;
+	bool m_bright_smooth_gradient = true;
+	int m_lens_flare_type = 2;  // 0=Ghost, 1=Halo, 2=Both
+	bool m_lens_use_texture = true;
+	int m_ghost_count = 5;
+	float m_ghost_dispersal = 0.7f;
+	float m_ghost_threshold = 20.0f;
+	float m_ghost_distortion = 7.5f;
+	float m_halo_radius = 0.4f;
+	float m_halo_threshold = 20.0f;
+	bool m_lens_use_dirt = false;
+	float m_lens_global_brightness = 0.0015f;
+	int m_blur_iterations = 20;
+	float m_blur_intensity = 0.5f;
+	int m_lens_flare_fbo_width = 0;
+	int m_lens_flare_fbo_height = 0;
+
 	// Helper functions
 	void updateLightFromSun();
 	glm::vec3 getSunColor(float elevation);
@@ -106,6 +147,10 @@ private:
 	void renderShadowMap();
 	glm::mat4 getLightSpaceMatrix() const;
 	void renderScene(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix, bool skipWater = false, const glm::vec4& clipPlane = glm::vec4(0.0f));
+	void renderScreenQuad();
+	void renderLensFlare();
+	void compositeLensFlare(GLuint sceneTexture);
+	void recreateLensFlareFBOs(int width, int height);
 
 public:
 	// setup
