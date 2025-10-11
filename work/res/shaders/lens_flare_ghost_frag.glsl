@@ -1,7 +1,7 @@
 #version 330 core
 
 // Based on: http://john-chapman-graphics.blogspot.com/2013/02/pseudo-lens-flare.html
-// Reference: https://github.com/john-chapman/GfxSamples
+// Reference: https://github.com/geoo993/ComputerGraphicsWithOpenGL
 
 // Input from vertex shader
 in vec2 vTexCoord;
