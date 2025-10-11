@@ -71,8 +71,8 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		int kernelSize = pcfSize * 2 + 1;
 		shadow /= float(kernelSize * kernelSize);
 
-		// Map [0,1] to [0.5,1], shadows never fully black
-		return clamp(shadow * 0.5 + 0.5, 0.5, 1.0);
+		// Map [0,1] to [0.2,1], allowing much darker shadows
+		return clamp(shadow * 0.8 + 0.2, 0.2, 1.0);
 	} else {
 		// Hard shadows with hardware depth comparison
 		return texture(uShadowMap, projCoords);
