@@ -80,6 +80,11 @@ private:
 	bool m_enable_shadows = true;
 	bool m_use_pcf = true;
 
+	// Fog
+	bool useFog = true;
+	int fogType = 0;
+	float fogDensity = 0.05f;
+
 	// Water reflection/refraction
 	GLuint m_reflection_fbo = 0;
 	GLuint m_reflection_texture = 0;

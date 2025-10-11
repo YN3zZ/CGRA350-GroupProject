@@ -291,7 +291,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 }
 
 
-// Helper function to render the scene (terrain, trees, skybox)
+// Helper function to render the scene (terrain, trees, skybox). Also sets fog parameters.
 void Application::renderScene(const mat4& view, const mat4& proj, const mat4& lightSpaceMatrix, bool skipWater, const vec4& clipPlane) {
 	// Calculate light color based on sun elevation
 	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
@@ -300,6 +300,9 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 
 	// Set clip plane uniform for terrain
 	glUseProgram(m_terrain.shader);
+	glUniform1i(glGetUniformLocation(m_terrain.shader, "useFog"), useFog);
+	glUniform1i(glGetUniformLocation(m_terrain.shader, "linearFog"), fogType == 0);
+	glUniform1f(glGetUniformLocation(m_terrain.shader, "fogDensity"), fogDensity);
 	glUniform4fv(glGetUniformLocation(m_terrain.shader, "uClipPlane"), 1, value_ptr(clipPlane));
 
 	// Draw terrain
@@ -308,6 +311,9 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 
 	// Set clip plane uniform for trees
 	glUseProgram(m_trees.shader);
+	glUniform1i(glGetUniformLocation(m_trees.shader, "useFog"), useFog);
+	glUniform1i(glGetUniformLocation(m_trees.shader, "linearFog"), fogType == 0);
+	glUniform1f(glGetUniformLocation(m_trees.shader, "fogDensity"), fogDensity);
 	glUniform4fv(glGetUniformLocation(m_trees.shader, "uClipPlane"), 1, value_ptr(clipPlane));
 
 	// Draw trees
@@ -532,6 +538,12 @@ void Application::render() {
 	vec4 noClipPlane(0.0f, 0.0f, 0.0f, 0.0f);
 	renderScene(view, proj, lightSpaceMatrix, false, noClipPlane);
 
+	// Sets fog parameters for water.
+	glUseProgram(m_water.shader);
+	glUniform1i(glGetUniformLocation(m_water.shader, "useFog"), useFog);
+	glUniform1i(glGetUniformLocation(m_water.shader, "linearFog"), fogType == 0);
+	glUniform1f(glGetUniformLocation(m_water.shader, "fogDensity"), fogDensity);
+
     // Draw water with reflection/refraction textures
 	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
 	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;
@@ -539,7 +551,7 @@ void Application::render() {
 				 lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf,
 				 m_reflection_texture, m_refraction_texture,
 				 m_enable_water_reflections, m_water_wave_strength, m_water_reflection_blend);
-
+	
 	// Draw sun
 	glDepthFunc(GL_LEQUAL);
 	glUseProgram(m_sunShader);
@@ -688,7 +700,7 @@ void Application::renderGUI() {
 	}
 
 	ImGui::Separator();
-	ImGui::Text("Sun & Lighting");
+	ImGui::Text("Sun, Lighting & Fog");
 	if (ImGui::SliderFloat("Sun Azimuth", &m_sunAzimuth, 0.0f, 360.0f, "%.1f°")) {
 		updateLightFromSun();
 	}
@@ -698,6 +710,11 @@ void Application::renderGUI() {
 	if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
 		updateLightFromSun();
 	}
+	ImGui::Checkbox("Use fog", &useFog);
+	ImGui::SameLine();
+	const char* fogTypes[] = { "Linear", "Exponential" };
+	ImGui::Combo("Fog type", &fogType, fogTypes, 2);
+	ImGui::SliderFloat("Fog Density", &fogDensity, 0.001f, 0.1f, "%.3f", 2);
 
 	ImGui::Separator();
 	ImGui::Text("Shadow Settings");
@@ -705,7 +722,7 @@ void Application::renderGUI() {
 	if (m_enable_shadows) {
 		ImGui::Checkbox("Use PCF (Soft Shadows)", &m_use_pcf);
 		const char* shadowMapSizes[] = {"512", "1024", "2048", "4096"};
-		int currentSizeIndex = 3;
+		int currentSizeIndex = 0;
 		if (m_shadow_map_size == 512) currentSizeIndex = 0;
 		else if (m_shadow_map_size == 1024) currentSizeIndex = 1;
 		else if (m_shadow_map_size == 2048) currentSizeIndex = 2;

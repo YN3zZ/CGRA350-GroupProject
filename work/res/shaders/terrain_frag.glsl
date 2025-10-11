@@ -19,6 +19,10 @@ uniform int numTextures; // How many have been set out of 4.
 uniform sampler2DShadow uShadowMap;
 uniform bool uEnableShadows;
 uniform bool uUsePCF;
+// Fog
+uniform bool useFog;
+uniform bool linearFog;
+uniform float fogDensity;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -159,17 +163,15 @@ vec3 triplanarSample(sampler2D tex, vec3 pos, vec3 norm) {
 
 float calculateFog() {
 	float fogFactor;
-	bool linearFog = false; // User controls this.
 	float dist = length(f_in.position);
 	if (linearFog) {
-		float fogMin = 0.1;
-		float fogMax = 30.0; // User controls this.
+		float fogMin = 0.1f;
+		float fogMax = 1.5f / fogDensity;
 		// Inverse linear min-max scaling so that far away is 0 and close is 1.
 		fogFactor = (fogMax - dist) / (fogMax - fogMin);
 	}
 	else {
 		// Expoential scaling.
-		float fogDensity = 0.02f; // User controls this.
 		fogFactor = exp(-fogDensity * dist);
 	}
 	return clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
@@ -259,10 +261,10 @@ void main() {
 	}
 
 	// Calculate fog based on distance to camera.
-	float fogFactor = calculateFog();
+	float fogFactor = useFog ? calculateFog() : 1.0f;
 	// Desaturate light color for fog.
-	float desaturated = 0.5f; 
-	vec3 fogColor = mix(lightColor, vec3(0.5f), desaturated);
+	float desaturated = 0.5f;
+	vec3 fogColor = mix(lightColor, vec3(0.4f), desaturated);
 
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
