@@ -116,6 +116,11 @@ private:
 	GLuint m_screen_quad_vao = 0;
 	GLuint m_screen_quad_vbo = 0;
 
+	// Bloom post-processing (reuses bright_parts extraction and pingpong blur)
+	GLuint m_bloom_texture = 0;  // Final blurred bloom texture
+	GLuint m_bloom_pingpong_fbo[2] = {0, 0};
+	GLuint m_bloom_pingpong_texture[2] = {0, 0};
+
 	// Lens flare parameters
 	bool m_enable_lens_flare = true;
 	float m_bright_threshold = 1.0f;
@@ -135,6 +140,14 @@ private:
 	int m_lens_flare_fbo_width = 0;
 	int m_lens_flare_fbo_height = 0;
 
+	// Bloom parameters
+	bool m_enable_bloom = true;
+	int m_bloom_blur_iterations = 5;  // Fewer iterations for performance
+	float m_bloom_blur_intensity = 2.0f;  // Higher intensity compensates
+	float m_bloom_strength = 0.04f;
+	bool m_bloom_anamorphic = false;  // Cinematic horizontal streaks
+	float m_bloom_anamorphic_ratio = 0.3f;  // How much to compress vertical blur
+
 	// Helper functions
 	void updateLightFromSun();
 	glm::vec3 getSunColor(float elevation);
@@ -144,6 +157,7 @@ private:
 	void renderScene(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix, bool skipWater = false, const glm::vec4& clipPlane = glm::vec4(0.0f));
 	void renderScreenQuad();
 	void renderLensFlare();
+	void renderBloom();
 	void compositeLensFlare(GLuint sceneTexture);
 	void recreateLensFlareFBOs(int width, int height);
 

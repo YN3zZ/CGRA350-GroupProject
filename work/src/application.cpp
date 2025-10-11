@@ -459,7 +459,7 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 
 		// Remove translation from view matrix (like skybox) to make sun infinitely far
 		mat4 sunView = mat4(mat3(view));
-		mat4 sunModel = translate(mat4(1), sunDirection * 100.0f) * scale(mat4(1), vec3(1.0f));
+		mat4 sunModel = translate(mat4(1), sunDirection * 100.0f) * scale(mat4(1), vec3(2.0f));
 		mat4 sunMV = sunView * sunModel;
 
 		glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uModelViewMatrix"), 1, false, value_ptr(sunMV));
@@ -578,18 +578,16 @@ void Application::render() {
 
 	m_windowsize = vec2(width, height); // update window size
 
-	// Check if lens flare FBOs need to be recreated due to window resize
-	if (m_enable_lens_flare && (width != m_lens_flare_fbo_width || height != m_lens_flare_fbo_height)) {
-		std::cout << "Window size changed from " << m_lens_flare_fbo_width << "x" << m_lens_flare_fbo_height
-		          << " to " << width << "x" << height << ", recreating FBOs..." << std::endl;
+	// Check if post-processing FBOs need to be recreated due to window resize
+	if ((m_enable_lens_flare || m_enable_bloom) && (width != m_lens_flare_fbo_width || height != m_lens_flare_fbo_height)) {
 		recreateLensFlareFBOs(width, height);
 	}
 
-	// Render to scene FBO for lens flare post-processing
-	if (m_enable_lens_flare) {
+	// Render to scene FBO for post-processing (lens flare and/or bloom)
+	if (m_enable_lens_flare || m_enable_bloom) {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_scene_fbo);
 	} else {
-		// Ensure default framebuffer is bound when lens flare disabled
+		// Ensure default framebuffer is bound when both effects are disabled
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
@@ -699,12 +697,19 @@ void Application::render() {
 	cgra::drawSphere();
 	glDepthFunc(GL_LESS);
 
-	// Apply lens flare post-processing
-	if (m_enable_lens_flare) {
+	// Apply post-processing effects
+	if (m_enable_lens_flare || m_enable_bloom) {
 		// Generate lens flare artifacts from the scene
-		renderLensFlare();
+		if (m_enable_lens_flare) {
+			renderLensFlare();
+		}
 
-		// Composite lens flare onto the scene and render to default framebuffer
+		// Generate bloom from bright parts (extracted via MRT)
+		if (m_enable_bloom) {
+			renderBloom();
+		}
+
+		// Composite lens flare and bloom onto the scene and render to default framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glDrawBuffer(GL_BACK);  // Ensure drawing to back buffer of default framebuffer
 		glViewport(0, 0, width, height);
@@ -712,11 +717,11 @@ void Application::render() {
 
 		compositeLensFlare(m_scene_texture);
 
-		// Restore terrain and water texture bindings that were overwritten by lens flare
+		// Restore terrain and water texture bindings that were overwritten by post-processing
 		m_terrain.setShaderParams();
 		m_water.setShaderParams();
 	} else {
-		// Ensure default framebuffer is bound when lens flare is disabled
+		// Ensure default framebuffer is bound when both effects are disabled
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 }
@@ -927,6 +932,20 @@ void Application::renderGUI() {
 		ImGui::Text("Composite Settings");
 		ImGui::Checkbox("Use Lens Dirt/Starburst", &m_lens_use_dirt);
 		ImGui::SliderFloat("Global Brightness", &m_lens_global_brightness, 0.0f, 0.01f, "%.4f");
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Bloom Settings");
+	ImGui::Checkbox("Enable Bloom", &m_enable_bloom);
+	if (m_enable_bloom) {
+		ImGui::Text("Bloom creates a glow effect around bright objects like the sun");
+		ImGui::SliderInt("Bloom Blur Iterations", &m_bloom_blur_iterations, 1, 20);
+		ImGui::SliderFloat("Bloom Blur Intensity", &m_bloom_blur_intensity, 0.1f, 5.0f, "%.2f");
+		ImGui::SliderFloat("Bloom Strength", &m_bloom_strength, 0.0f, 0.2f, "%.4f");
+		ImGui::Checkbox("Anamorphic Bloom (cinematic horizontal streaks)", &m_bloom_anamorphic);
+		if (m_bloom_anamorphic) {
+			ImGui::SliderFloat("Anamorphic Ratio", &m_bloom_anamorphic_ratio, 0.1f, 1.0f, "%.2f");
+		}
 	}
 
     // L-System parameters that affect mesh generation
@@ -1335,6 +1354,58 @@ void Application::renderLensFlare() {
 	glEnable(GL_DEPTH_TEST);
 }
 
+void Application::renderBloom() {
+	if (!m_enable_bloom) return;
+
+	// Save current state
+	GLint currentViewport[4];
+	glGetIntegerv(GL_VIEWPORT, currentViewport);
+	int width = currentViewport[2];
+	int height = currentViewport[3];
+
+	// Disable depth testing and face culling for post-processing
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
+	// Blur bright parts using ping-pong technique
+
+	bool horizontal = true;
+	bool first_iteration = true;
+
+	glUseProgram(m_gaussian_blur_shader);
+	glUniform1f(glGetUniformLocation(m_gaussian_blur_shader, "uIntensity"), m_bloom_blur_intensity);
+	glUniform1i(glGetUniformLocation(m_gaussian_blur_shader, "uAnamorphic"), m_bloom_anamorphic);
+	glUniform1f(glGetUniformLocation(m_gaussian_blur_shader, "uAnamorphicRatio"), m_bloom_anamorphic_ratio);
+
+	for (int i = 0; i < m_bloom_blur_iterations; i++) {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_bloom_pingpong_fbo[horizontal]);
+		glViewport(0, 0, width, height);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glUniform1i(glGetUniformLocation(m_gaussian_blur_shader, "uHorizontal"), horizontal);
+
+		glActiveTexture(GL_TEXTURE0);
+		if (first_iteration) {
+			// First iteration: blur the bright parts extracted via MRT
+			glBindTexture(GL_TEXTURE_2D, m_bloom_texture);
+		} else {
+			// Subsequent iterations: blur the result from previous pass
+			glBindTexture(GL_TEXTURE_2D, m_bloom_pingpong_texture[!horizontal]);
+		}
+		glUniform1i(glGetUniformLocation(m_gaussian_blur_shader, "uTexture"), 0);
+
+		renderScreenQuad();
+
+		horizontal = !horizontal;
+		if (first_iteration) first_iteration = false;
+	}
+
+	// Restore state
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(currentViewport[0], currentViewport[1], currentViewport[2], currentViewport[3]);
+	glEnable(GL_DEPTH_TEST);
+}
+
 void Application::compositeLensFlare(GLuint sceneTexture) {
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -1357,8 +1428,19 @@ void Application::compositeLensFlare(GLuint sceneTexture) {
 	glBindTexture(GL_TEXTURE_2D, m_lens_starburst_texture);
 	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uLensStarTexture"), 3);
 
+	// Bind bloom texture
+	glActiveTexture(GL_TEXTURE4);
+	// Use the final blurred bloom from ping-pong buffer
+	// After bloom blur, the result is in m_bloom_pingpong_texture[!horizontal]
+	// Since we did m_bloom_blur_iterations, calculate which buffer has the final result
+	bool horizontal = (m_bloom_blur_iterations % 2 == 0);
+	glBindTexture(GL_TEXTURE_2D, m_bloom_pingpong_texture[!horizontal]);
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uBloomTexture"), 4);
+
 	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uUseDirt"), m_lens_use_dirt);
 	glUniform1f(glGetUniformLocation(m_lens_flare_composite_shader, "uGlobalBrightness"), m_lens_global_brightness);
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uEnableBloom"), m_enable_bloom);
+	glUniform1f(glGetUniformLocation(m_lens_flare_composite_shader, "uBloomStrength"), m_bloom_strength);
 
 	// Calculate lens star matrix based on camera rotation (makes the starburst rotate with camera movement)
 	mat4 view;
@@ -1414,10 +1496,17 @@ void Application::recreateLensFlareFBOs(int width, int height) {
 	if (m_pingpong_texture[1]) glDeleteTextures(1, &m_pingpong_texture[1]);
 	if (m_lens_flare_fbo) glDeleteFramebuffers(1, &m_lens_flare_fbo);
 	if (m_lens_flare_texture) glDeleteTextures(1, &m_lens_flare_texture);
+	if (m_bloom_texture) glDeleteTextures(1, &m_bloom_texture);
+	if (m_bloom_pingpong_fbo[0]) glDeleteFramebuffers(1, &m_bloom_pingpong_fbo[0]);
+	if (m_bloom_pingpong_fbo[1]) glDeleteFramebuffers(1, &m_bloom_pingpong_fbo[1]);
+	if (m_bloom_pingpong_texture[0]) glDeleteTextures(1, &m_bloom_pingpong_texture[0]);
+	if (m_bloom_pingpong_texture[1]) glDeleteTextures(1, &m_bloom_pingpong_texture[1]);
 
-	// Scene capture FBO (full resolution)
+	// Scene capture FBO (full resolution) with MRT support for bloom
 	glGenFramebuffers(1, &m_scene_fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, m_scene_fbo);
+
+	// Color attachment 0: regular scene
 	glGenTextures(1, &m_scene_texture);
 	glBindTexture(GL_TEXTURE_2D, m_scene_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
@@ -1427,6 +1516,21 @@ void Application::recreateLensFlareFBOs(int width, int height) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_scene_texture, 0);
 
+	// Color attachment 1: bright parts (for bloom)
+	glGenTextures(1, &m_bloom_texture);
+	glBindTexture(GL_TEXTURE_2D, m_bloom_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, m_bloom_texture, 0);
+
+	// Tell OpenGL we're rendering to both color attachments
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+
+	// Depth buffer
 	glGenRenderbuffers(1, &m_scene_depth_buffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, m_scene_depth_buffer);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
@@ -1469,6 +1573,20 @@ void Application::recreateLensFlareFBOs(int width, int height) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_lens_flare_texture, 0);
+
+	// Bloom ping-pong FBOs (full resolution for better quality)
+	for (int i = 0; i < 2; i++) {
+		glGenFramebuffers(1, &m_bloom_pingpong_fbo[i]);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_bloom_pingpong_fbo[i]);
+		glGenTextures(1, &m_bloom_pingpong_texture[i]);
+		glBindTexture(GL_TEXTURE_2D, m_bloom_pingpong_texture[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_bloom_pingpong_texture[i], 0);
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
