@@ -8,6 +8,10 @@ uniform vec3 uViewPos;
 uniform sampler2DShadow uShadowMap;
 uniform bool uEnableShadows;
 uniform bool uUsePCF;
+// Fog
+uniform bool useFog;
+uniform bool linearFog;
+uniform float fogDensity;
 
 in vec2 vTexCoord;
 in vec3 vNormal;
@@ -22,11 +26,13 @@ const float PI = 3.14159265358979f;
 const float roughness = 0.6f;
 const float metallic = 0.0f;
 
+
 // Calculate the microfacet detail made by geometric attenuation.
 float microfacet(float NdotH, float VdotH, float NdotV_L) {
     // NdotV_L is the dot product of normDir with either viewDir or lightDir.
     return clamp((2.0 * NdotH * NdotV_L) / VdotH, 0.0f, 1.0f);
 }
+
 
 float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 	// Perform perspective divide
@@ -70,6 +76,24 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		return texture(uShadowMap, projCoords);
 	}
 }
+
+
+float calculateFog() {
+	float fogFactor;
+	float dist = length(uViewPos - vWorldPos);
+	if (linearFog) {
+		float fogMin = 0.1f;
+		float fogMax = 1.5f / fogDensity;
+		// Inverse linear min-max scaling so that far away is 0 and close is 1.
+		fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	}
+	else {
+		// Expoential scaling.
+		fogFactor = exp(-fogDensity * dist);
+	}
+	return clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
+}
+
 
 void main() {
     vec4 texColor = texture(uLeafTexture, vTexCoord);
@@ -127,8 +151,15 @@ void main() {
 		shadow = calculateShadow(vLightSpacePos, normal, lightDir);
 	}
 
+	// Calculate fog based on distance to camera.
+	float fogFactor = useFog ? calculateFog() : 1.0f;
+	// Desaturate light color for fog.
+	float desaturated = 0.5f;
+	vec3 fogColor = mix(lightColor, vec3(0.4f), desaturated);
+
     // Combine lighting components, applying shadow to diffuse and specular only
     vec3 finalColor = ambient + shadow * (diffuse + specular);
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
     finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f));
 
     fragColor = vec4(finalColor, texColor.a);
