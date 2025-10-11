@@ -31,6 +31,7 @@ uniform sampler2D uDuDvMap;
 uniform bool uEnableReflections;
 uniform float uWaveStrength;
 uniform float uReflectionBlend;
+uniform bool uEnableLensFlare;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -276,7 +277,9 @@ void main() {
 		finalColor = mix(environmentColor, finalColor, 1.0 - uReflectionBlend) + specular * 0.5;
 	}
 
-	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
+	// Allow HDR values (up to 1.5) when lens flare is active to enable bright reflections to create flare
+	float maxBrightness = uEnableLensFlare ? 1.5f : 1.0f;
+	finalColor = clamp(finalColor, vec3(0.0f), vec3(maxBrightness));
 
 	fb_color = vec4(finalColor, alpha);
 }

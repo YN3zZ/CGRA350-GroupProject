@@ -41,7 +41,8 @@ public:
 			  GLuint refractionTexture = 0,
 			  bool enableReflections = false,
 			  float waveStrength = 0.03f,
-			  float reflectionBlend = 0.7f);
+			  float reflectionBlend = 0.7f,
+			  bool enableLensFlare = false);
 	void setShaderParams();
 	void createMesh();
 };
