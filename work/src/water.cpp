@@ -129,9 +129,8 @@ void Water::draw(const mat4& view, const mat4& proj,
 }
 
 
-// Create terrain mesh using perlin noise heightmap.
+// Create water mesh which is essentially a plane.
 void Water::createMesh() {
-
 	// Create the vertices which have positions, normals and UVs.
 	vector<mesh_vertex> vertices(meshResolution * meshResolution);
 	for (int i = 0; i < meshResolution; ++i) {
