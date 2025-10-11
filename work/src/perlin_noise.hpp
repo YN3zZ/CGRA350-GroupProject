@@ -17,11 +17,6 @@ private:
 
 public:
 	cgra::gl_mesh terrain;
-
-private:
-
-
-public:
 	GLuint shader = 0;
 	glm::mat4 modelTransform{ 1.0f };
 
@@ -49,5 +44,6 @@ public:
 			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
+	GLuint createHeightTexture();
 	glm::vec3 sampleVertex(glm::vec2 position);
 };
