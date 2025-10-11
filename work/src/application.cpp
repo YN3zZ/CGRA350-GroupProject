@@ -202,9 +202,10 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Initialize light direction from sun
     updateLightFromSun();
 
-    // Build shadow depth shader
+    // Build shadow depth shader (must have both vertex and fragment shader for OpenGL 3.3 core)
     shader_builder sb_shadow;
     sb_shadow.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_vert.glsl"));
+    sb_shadow.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//shadow_depth_frag.glsl"));
     m_shadow_depth_shader = sb_shadow.build();
 
     // Create shadow map framebuffer
@@ -278,6 +279,95 @@ Application::Application(GLFWwindow *window) : m_window(window) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Build lens flare shaders
+    shader_builder sb_bright_parts;
+    sb_bright_parts.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bright_parts_vert.glsl"));
+    sb_bright_parts.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//bright_parts_frag.glsl"));
+    m_bright_parts_shader = sb_bright_parts.build();
+
+    shader_builder sb_gaussian_blur;
+    sb_gaussian_blur.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//gaussian_blur_vert.glsl"));
+    sb_gaussian_blur.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//gaussian_blur_frag.glsl"));
+    m_gaussian_blur_shader = sb_gaussian_blur.build();
+
+    shader_builder sb_lens_ghost;
+    sb_lens_ghost.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//lens_flare_ghost_vert.glsl"));
+    sb_lens_ghost.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//lens_flare_ghost_frag.glsl"));
+    m_lens_flare_ghost_shader = sb_lens_ghost.build();
+
+    shader_builder sb_lens_composite;
+    sb_lens_composite.set_shader(GL_VERTEX_SHADER, CGRA_SRCDIR + std::string("//res//shaders//lens_flare_composite_vert.glsl"));
+    sb_lens_composite.set_shader(GL_FRAGMENT_SHADER, CGRA_SRCDIR + std::string("//res//shaders//lens_flare_composite_frag.glsl"));
+    m_lens_flare_composite_shader = sb_lens_composite.build();
+
+    // Load lens flare textures
+    rgba_image lens_color_img = rgba_image(CGRA_SRCDIR + std::string("//res//textures//ppfx//lensColor.jpg"));
+    glGenTextures(1, &m_lens_color_texture);
+    glBindTexture(GL_TEXTURE_2D, m_lens_color_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, lens_color_img.size.x, lens_color_img.size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, lens_color_img.data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    rgba_image lens_texture_img = rgba_image(CGRA_SRCDIR + std::string("//res//textures//ppfx//lensTexture.jpg"));
+    glGenTextures(1, &m_lens_texture);
+    glBindTexture(GL_TEXTURE_2D, m_lens_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, lens_texture_img.size.x, lens_texture_img.size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, lens_texture_img.data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    rgba_image lens_dirt_img = rgba_image(CGRA_SRCDIR + std::string("//res//textures//ppfx//lensDirt.png"));
+    glGenTextures(1, &m_lens_dirt_texture);
+    glBindTexture(GL_TEXTURE_2D, m_lens_dirt_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, lens_dirt_img.size.x, lens_dirt_img.size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, lens_dirt_img.data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    rgba_image lens_starburst_img = rgba_image(CGRA_SRCDIR + std::string("//res//textures//ppfx//lensStarburst.png"));
+    glGenTextures(1, &m_lens_starburst_texture);
+    glBindTexture(GL_TEXTURE_2D, m_lens_starburst_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, lens_starburst_img.size.x, lens_starburst_img.size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, lens_starburst_img.data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Create lens flare framebuffers
+    int width, height;
+    glfwGetFramebufferSize(m_window, &width, &height);
+
+    // Initialize FBO tracking variables and create initial FBOs
+    m_lens_flare_fbo_width = 0;  // Set to 0 to force initial creation
+    m_lens_flare_fbo_height = 0;
+    recreateLensFlareFBOs(width, height);
+
+    // Create screen quad for post-processing
+    float quadVertices[] = {
+        // positions        // texCoords
+        -1.0f,  1.0f, 0.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f,  0.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,  1.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f,  0.0f, 1.0f,
+         1.0f, -1.0f, 0.0f,  1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f,  1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &m_screen_quad_vao);
+    glGenBuffers(1, &m_screen_quad_vbo);
+    glBindVertexArray(m_screen_quad_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_screen_quad_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
     // Change UI Style
     ImGuiStyle &style = ImGui::GetStyle();
     // Red button, white text, red background
@@ -297,6 +387,15 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
 	vec3 baseLightColor = m_terrain.lightColor;
 	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;
+
+	// Re-bind shadow map texture to prevent conflicts from FBO switches
+	// to ensures shadows work correctly during reflection/refraction passes
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+
+	// Ensure depth mask is enabled for geometry rendering
+	// (skybox disables it
+	glDepthMask(GL_TRUE);
 
 	// Set clip plane uniform for terrain
 	glUseProgram(m_terrain.shader);
@@ -362,16 +461,18 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 		glDepthFunc(GL_LEQUAL);
 		glUseProgram(m_sunShader);
 
-		// Calculate sun position
+		// Calculate sun direction (normalized, infinitely far like skybox)
 		float azimuthRad = glm::radians(m_sunAzimuth);
 		float elevationRad = glm::radians(m_sunElevation);
-		vec3 sunPosition;
-		sunPosition.x = m_sunDistance * cos(elevationRad) * cos(azimuthRad);
-		sunPosition.y = m_sunDistance * sin(elevationRad);
-		sunPosition.z = m_sunDistance * cos(elevationRad) * sin(azimuthRad);
+		vec3 sunDirection;
+		sunDirection.x = cos(elevationRad) * cos(azimuthRad);
+		sunDirection.y = sin(elevationRad);
+		sunDirection.z = cos(elevationRad) * sin(azimuthRad);
 
-		mat4 sunModel = translate(mat4(1), sunPosition) * scale(mat4(1), vec3(10.0f));
-		mat4 sunMV = view * sunModel;
+		// Remove translation from view matrix (like skybox) to make sun infinitely far
+		mat4 sunView = mat4(mat3(view));
+		mat4 sunModel = translate(mat4(1), sunDirection * 100.0f) * scale(mat4(1), vec3(1.0f));
+		mat4 sunMV = sunView * sunModel;
 
 		glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uModelViewMatrix"), 1, false, value_ptr(sunMV));
 		glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uProjectionMatrix"), 1, false, value_ptr(proj));
@@ -385,12 +486,23 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 
 void Application::render() {
 
-	// 1st pass: Reflection
+	// 1st pass: Shadow map (must be first so reflections/refractions can use it)
+
+	// Only render shadows when sun is above horizon
+	if (m_enable_shadows && m_sunElevation > -5.0f) {
+		renderShadowMap();
+	}
+
+	// 2nd pass: Reflection
 	if (m_enable_water_reflections) {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
 		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
 		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Re-bind shadow texture after FBO switch
+		glActiveTexture(GL_TEXTURE20);
+		glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
@@ -429,12 +541,16 @@ void Application::render() {
 		glDisable(GL_CLIP_DISTANCE0);
 		glFrontFace(GL_CW);
 
-		// 2nd pass: Refraction
+		// 3rd pass: Refraction
 
 		glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
 		glViewport(0, 0, m_water_fbo_width, m_water_fbo_height);
 		glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Re-bind shadow texture after FBO switch
+		glActiveTexture(GL_TEXTURE20);
+		glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
@@ -466,13 +582,6 @@ void Application::render() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	// 3rd pass: Shadow map
-	
-	// Only render shadows when sun is above horizon
-	if (m_enable_shadows && m_sunElevation > -5.0f) {
-		renderShadowMap();
-	}
-
 	// 4th pass: main rendering
 
 	// retrieve the window height
@@ -480,11 +589,31 @@ void Application::render() {
 	glfwGetFramebufferSize(m_window, &width, &height);
 
 	m_windowsize = vec2(width, height); // update window size
+
+	// Check if lens flare FBOs need to be recreated due to window resize
+	if (m_enable_lens_flare && (width != m_lens_flare_fbo_width || height != m_lens_flare_fbo_height)) {
+		std::cout << "Window size changed from " << m_lens_flare_fbo_width << "x" << m_lens_flare_fbo_height
+		          << " to " << width << "x" << height << ", recreating FBOs..." << std::endl;
+		recreateLensFlareFBOs(width, height);
+	}
+
+	// Render to scene FBO for lens flare post-processing
+	if (m_enable_lens_flare) {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_scene_fbo);
+	} else {
+		// Ensure default framebuffer is bound when lens flare disabled
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
 	glViewport(0, 0, width, height); // set the viewport to draw to the entire window
 
 	// clear the back-buffer
 	glClearColor(0.3f, 0.3f, 0.4f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Re-bind shadow texture after returning to default framebuffer
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
 
 	// enable flags for normal/forward rendering
 	glEnable(GL_DEPTH_TEST);
@@ -556,23 +685,29 @@ void Application::render() {
     m_water.draw(view, proj, m_terrain.lightDirection, activeLightColor,
 				 lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf,
 				 m_reflection_texture, m_refraction_texture,
-				 m_enable_water_reflections, m_water_wave_strength, m_water_reflection_blend);
-	
+				 m_enable_water_reflections, m_water_wave_strength, m_water_reflection_blend,
+				 m_enable_lens_flare);
+
 	// Draw sun
 	glDepthFunc(GL_LEQUAL);
 	glUseProgram(m_sunShader);
 
-	// Calculate sun position
+	// Calculate sun direction (normalized, infinitely far like skybox)
 	float azimuthRad = radians(m_sunAzimuth);
 	float elevationRad = radians(m_sunElevation);
-	vec3 sunPosition;
-	sunPosition.x = m_sunDistance * cos(elevationRad) * cos(azimuthRad);
-	sunPosition.y = m_sunDistance * sin(elevationRad);
-	sunPosition.z = m_sunDistance * cos(elevationRad) * sin(azimuthRad);
+	vec3 sunDirection;
+	sunDirection.x = cos(elevationRad) * cos(azimuthRad);
+	sunDirection.y = sin(elevationRad);
+	sunDirection.z = cos(elevationRad) * sin(azimuthRad);
 
-	// Create model matrix (translate to sun position, scale sphere)
-	mat4 sunModel = translate(mat4(1), sunPosition) * scale(mat4(1), vec3(10.0f));
-	mat4 sunMV = view * sunModel;
+	// Remove translation from view matrix (like skybox) to make sun infinitely far
+	mat4 sunView = mat4(mat3(view));
+	mat4 sunModel = translate(mat4(1), sunDirection * 100.0f) * scale(mat4(1), vec3(1.5f));
+	mat4 sunMV = sunView * sunModel;
+
+	vec4 sunClipSpace = proj * view * vec4(sunDirection, 1.0);
+	vec3 sunNDC = vec3(sunClipSpace) / sunClipSpace.w;  // Normalize by w
+	m_sun_screen_pos = vec2(sunNDC.x * 0.5f + 0.5f, sunNDC.y * 0.5f + 0.5f);  // Convert from [-1,1] to [0,1]
 
 	glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uModelViewMatrix"), 1, false, value_ptr(sunMV));
 	glUniformMatrix4fv(glGetUniformLocation(m_sunShader, "uProjectionMatrix"), 1, false, value_ptr(proj));
@@ -581,6 +716,27 @@ void Application::render() {
 
 	cgra::drawSphere();
 	glDepthFunc(GL_LESS);
+
+	// Apply lens flare post-processing
+	if (m_enable_lens_flare) {
+		// Generate lens flare artifacts from the scene
+		renderLensFlare();
+
+		// Composite lens flare onto the scene and render to default framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDrawBuffer(GL_BACK);  // Ensure drawing to back buffer of default framebuffer
+		glViewport(0, 0, width, height);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		compositeLensFlare(m_scene_texture);
+
+		// Restore terrain and water texture bindings that were overwritten by lens flare
+		m_terrain.setShaderParams();
+		m_water.setShaderParams();
+	} else {
+		// Ensure default framebuffer is bound when lens flare is disabled
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 }
 
 
@@ -767,7 +923,35 @@ void Application::renderGUI() {
 			}
 		}
 	}
-  
+
+	ImGui::Separator();
+	ImGui::Text("Lens Flare Settings");
+	ImGui::Checkbox("Enable Lens Flare", &m_enable_lens_flare);
+	if (m_enable_lens_flare) {
+		ImGui::Text("Bright Parts Extraction");
+		ImGui::SliderFloat("Brightness Threshold", &m_bright_threshold, 0.0f, 3.0f, "%.2f");
+		ImGui::Checkbox("Smooth Gradient", &m_bright_smooth_gradient);
+
+		ImGui::Text("Blur Settings");
+		ImGui::SliderInt("Blur Iterations", &m_blur_iterations, 1, 20);
+		ImGui::SliderFloat("Blur Intensity", &m_blur_intensity, 0.1f, 2.0f, "%.2f");
+
+		ImGui::Text("Ghost/Halo Settings");
+		const char* lensTypes[] = {"Ghost", "Halo", "Both"};
+		ImGui::Combo("Lens Type", &m_lens_flare_type, lensTypes, 3);
+		ImGui::Checkbox("Use Lens Texture", &m_lens_use_texture);
+		ImGui::SliderInt("Ghost Count", &m_ghost_count, 1, 32);
+		ImGui::SliderFloat("Ghost Dispersal", &m_ghost_dispersal, 0.0f, 0.75f, "%.2f");
+		ImGui::SliderFloat("Ghost Threshold", &m_ghost_threshold, 0.0f, 30.0f, "%.1f");
+		ImGui::SliderFloat("Ghost Distortion", &m_ghost_distortion, 0.0f, 10.0f, "%.1f");
+		ImGui::SliderFloat("Halo Radius", &m_halo_radius, 0.0f, 0.65f, "%.2f");
+		ImGui::SliderFloat("Halo Threshold", &m_halo_threshold, 0.0f, 30.0f, "%.1f");
+
+		ImGui::Text("Composite Settings");
+		ImGui::Checkbox("Use Lens Dirt/Starburst", &m_lens_use_dirt);
+		ImGui::SliderFloat("Global Brightness", &m_lens_global_brightness, 0.0f, 0.01f, "%.4f");
+	}
+
     // L-System parameters that affect mesh generation
     ImGui::Separator();
     ImGui::Text("L-System Parameters");
@@ -999,6 +1183,14 @@ void Application::renderShadowMap() {
 	// Bind shadow framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, m_shadow_map_fbo);
 	glViewport(0, 0, m_shadow_map_size, m_shadow_map_size);
+
+	// Ensure depth writing is enabled (might be disabled by skybox rendering)
+	glDepthMask(GL_TRUE);
+
+	// Depth-only rendering
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Enable depth testing
@@ -1060,4 +1252,250 @@ void Application::renderShadowMap() {
 	// Restore viewport and unbind framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+
+	// Ensure shadow map texture remains bound to GL_TEXTURE20
+	// to prevent texture unit conflicts during reflection/refraction passes
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+}
+
+void Application::renderScreenQuad() {
+	glBindVertexArray(m_screen_quad_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+}
+
+void Application::renderLensFlare() {
+	if (!m_enable_lens_flare) return;
+
+	// Save current state
+	GLint currentViewport[4];
+	glGetIntegerv(GL_VIEWPORT, currentViewport);
+	int width = currentViewport[2];
+	int height = currentViewport[3];
+
+	// Disable depth testing and face culling for post-processing
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
+	// Pass 1: Extract bright parts from the scene
+	glBindFramebuffer(GL_FRAMEBUFFER, m_bright_parts_fbo);
+	glViewport(0, 0, width, height);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glUseProgram(m_bright_parts_shader);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_scene_texture);  // Use the captured scene texture
+	glUniform1i(glGetUniformLocation(m_bright_parts_shader, "uSceneTexture"), 0);
+	glUniform1f(glGetUniformLocation(m_bright_parts_shader, "uThreshold"), m_bright_threshold);
+	glUniform1i(glGetUniformLocation(m_bright_parts_shader, "uSmoothGradient"), m_bright_smooth_gradient);
+
+	renderScreenQuad();
+
+	// Pass 2: Blur bright parts using ping-pong technique
+	bool horizontal = true;
+	bool first_iteration = true;
+
+	glUseProgram(m_gaussian_blur_shader);
+	glUniform1f(glGetUniformLocation(m_gaussian_blur_shader, "uIntensity"), m_blur_intensity);
+
+	for (int i = 0; i < m_blur_iterations; i++) {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_pingpong_fbo[horizontal]);
+		glViewport(0, 0, width / 2, height / 2);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glUniform1i(glGetUniformLocation(m_gaussian_blur_shader, "uHorizontal"), horizontal);
+
+		glActiveTexture(GL_TEXTURE0);
+		if (first_iteration) {
+			glBindTexture(GL_TEXTURE_2D, m_bright_parts_texture);
+		} else {
+			glBindTexture(GL_TEXTURE_2D, m_pingpong_texture[!horizontal]);
+		}
+		glUniform1i(glGetUniformLocation(m_gaussian_blur_shader, "uTexture"), 0);
+
+		renderScreenQuad();
+
+		horizontal = !horizontal;
+		if (first_iteration) first_iteration = false;
+	}
+
+	// Pass 3: Generate ghost/halo artifacts
+	glBindFramebuffer(GL_FRAMEBUFFER, m_lens_flare_fbo);
+	glViewport(0, 0, width, height);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glUseProgram(m_lens_flare_ghost_shader);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_pingpong_texture[!horizontal]);
+	glUniform1i(glGetUniformLocation(m_lens_flare_ghost_shader, "uBrightTexture"), 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_lens_color_texture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_ghost_shader, "uLensColorTexture"), 1);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, m_lens_texture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_ghost_shader, "uLensMaskTexture"), 2);
+
+	glUniform1i(glGetUniformLocation(m_lens_flare_ghost_shader, "uLensType"), m_lens_flare_type);
+	glUniform1i(glGetUniformLocation(m_lens_flare_ghost_shader, "uUseLensTexture"), m_lens_use_texture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_ghost_shader, "uGhostCount"), m_ghost_count);
+	glUniform1f(glGetUniformLocation(m_lens_flare_ghost_shader, "uGhostDispersal"), m_ghost_dispersal);
+	glUniform1f(glGetUniformLocation(m_lens_flare_ghost_shader, "uGhostThreshold"), m_ghost_threshold);
+	glUniform1f(glGetUniformLocation(m_lens_flare_ghost_shader, "uGhostDistortion"), m_ghost_distortion);
+	glUniform1f(glGetUniformLocation(m_lens_flare_ghost_shader, "uHaloRadius"), m_halo_radius);
+	glUniform1f(glGetUniformLocation(m_lens_flare_ghost_shader, "uHaloThreshold"), m_halo_threshold);
+
+	renderScreenQuad();
+
+	// Restore default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(currentViewport[0], currentViewport[1], currentViewport[2], currentViewport[3]);
+
+	// Re-enable depth testing
+	glEnable(GL_DEPTH_TEST);
+}
+
+void Application::compositeLensFlare(GLuint sceneTexture) {
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
+	glUseProgram(m_lens_flare_composite_shader);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, sceneTexture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uSceneTexture"), 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_lens_flare_texture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uFlareTexture"), 1);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, m_lens_dirt_texture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uLensDirtTexture"), 2);
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, m_lens_starburst_texture);
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uLensStarTexture"), 3);
+
+	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uUseDirt"), m_lens_use_dirt);
+	glUniform1f(glGetUniformLocation(m_lens_flare_composite_shader, "uGlobalBrightness"), m_lens_global_brightness);
+
+	// Calculate lens star matrix based on camera rotation (makes the starburst rotate with camera movement)
+	mat4 view;
+	if (firstPersonCamera) {
+		view = rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+			* rotate(mat4(1), m_yaw, vec3(0, 1, 0))
+			* translate(mat4(1), -cameraPosition);
+	} else {
+		view = translate(mat4(1), vec3(0, 0, -m_distance))
+			* rotate(mat4(1), m_pitch, vec3(1, 0, 0))
+			* rotate(mat4(1), m_yaw, vec3(0, 1, 0));
+	}
+
+	vec4 camx = view[0];
+	vec4 camz = view[1];
+	float camrot = dot(vec3(camx), vec3(0.0f, 0.0f, 1.0f)) + dot(vec3(camz), vec3(0.0f, 1.0f, 0.0f));
+
+	mat3 scaleBias1 = mat3(
+		2.0f,  0.0f, -1.0f,
+		0.0f,  2.0f, -1.0f,
+		0.0f,  0.0f,  1.0f
+	);
+	mat3 rotation = mat3(
+		cos(camrot), -sin(camrot), 0.0f,
+		sin(camrot),  cos(camrot), 0.0f,
+		0.0f,         0.0f,        1.0f
+	);
+	mat3 scaleBias2 = mat3(
+		0.5f, 0.0f, 0.5f,
+		0.0f, 0.5f, 0.5f,
+		0.0f, 0.0f, 1.0f
+	);
+
+	mat3 lensStarMatrix = scaleBias2 * rotation * scaleBias1;
+	glUniformMatrix3fv(glGetUniformLocation(m_lens_flare_composite_shader, "uLensStarMatrix"), 1, GL_FALSE, value_ptr(lensStarMatrix));
+
+	renderScreenQuad();
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+}
+
+void Application::recreateLensFlareFBOs(int width, int height) {
+	// Delete old FBOs and textures
+	if (m_scene_fbo) glDeleteFramebuffers(1, &m_scene_fbo);
+	if (m_scene_texture) glDeleteTextures(1, &m_scene_texture);
+	if (m_scene_depth_buffer) glDeleteRenderbuffers(1, &m_scene_depth_buffer);
+	if (m_bright_parts_fbo) glDeleteFramebuffers(1, &m_bright_parts_fbo);
+	if (m_bright_parts_texture) glDeleteTextures(1, &m_bright_parts_texture);
+	if (m_pingpong_fbo[0]) glDeleteFramebuffers(1, &m_pingpong_fbo[0]);
+	if (m_pingpong_fbo[1]) glDeleteFramebuffers(1, &m_pingpong_fbo[1]);
+	if (m_pingpong_texture[0]) glDeleteTextures(1, &m_pingpong_texture[0]);
+	if (m_pingpong_texture[1]) glDeleteTextures(1, &m_pingpong_texture[1]);
+	if (m_lens_flare_fbo) glDeleteFramebuffers(1, &m_lens_flare_fbo);
+	if (m_lens_flare_texture) glDeleteTextures(1, &m_lens_flare_texture);
+
+	// Scene capture FBO (full resolution)
+	glGenFramebuffers(1, &m_scene_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_scene_fbo);
+	glGenTextures(1, &m_scene_texture);
+	glBindTexture(GL_TEXTURE_2D, m_scene_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_scene_texture, 0);
+
+	glGenRenderbuffers(1, &m_scene_depth_buffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, m_scene_depth_buffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_scene_depth_buffer);
+
+	// Bright parts FBO
+	glGenFramebuffers(1, &m_bright_parts_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_bright_parts_fbo);
+	glGenTextures(1, &m_bright_parts_texture);
+	glBindTexture(GL_TEXTURE_2D, m_bright_parts_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_bright_parts_texture, 0);
+
+	// Ping-pong FBOs
+	for (int i = 0; i < 2; i++) {
+		glGenFramebuffers(1, &m_pingpong_fbo[i]);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_pingpong_fbo[i]);
+		glGenTextures(1, &m_pingpong_texture[i]);
+		glBindTexture(GL_TEXTURE_2D, m_pingpong_texture[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width / 2, height / 2, 0, GL_RGB, GL_FLOAT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_pingpong_texture[i], 0);
+	}
+
+	// Lens flare output FBO
+	glGenFramebuffers(1, &m_lens_flare_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_lens_flare_fbo);
+	glGenTextures(1, &m_lens_flare_texture);
+	glBindTexture(GL_TEXTURE_2D, m_lens_flare_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_lens_flare_texture, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Update stored size
+	m_lens_flare_fbo_width = width;
+	m_lens_flare_fbo_height = height;
 }
