@@ -7,6 +7,8 @@ in vec2 vTexCoord;
 uniform sampler2D uTexture;
 uniform bool uHorizontal;
 uniform float uIntensity;
+uniform bool uAnamorphic;
+uniform float uAnamorphicRatio;
 
 // Output
 out vec4 fragColor;
@@ -24,9 +26,10 @@ void main() {
             result += texture(uTexture, vTexCoord - vec2(texelSize.x * float(i) * uIntensity, 0.0)).rgb * weight[i];
         }
     } else {
+        float verticalIntensity = uAnamorphic ? (uIntensity * uAnamorphicRatio) : uIntensity;
         for (int i = 1; i < 5; ++i) {
-            result += texture(uTexture, vTexCoord + vec2(0.0, texelSize.y * float(i) * uIntensity)).rgb * weight[i];
-            result += texture(uTexture, vTexCoord - vec2(0.0, texelSize.y * float(i) * uIntensity)).rgb * weight[i];
+            result += texture(uTexture, vTexCoord + vec2(0.0, texelSize.y * float(i) * verticalIntensity)).rgb * weight[i];
+            result += texture(uTexture, vTexCoord - vec2(0.0, texelSize.y * float(i) * verticalIntensity)).rgb * weight[i];
         }
     }
 
