@@ -24,6 +24,7 @@ public:
     bool useTextures = false;
 
     // Leaf parameters
+    GLuint leafShader = 0;
     GLuint leafTexture = 0;
     float leafSize = 0.4f;
     bool renderLeaves = false;
@@ -65,7 +66,6 @@ private:
     std::vector<glm::vec3> baseLeafPositions;   // End nodes from single tree
     std::vector<glm::vec3> baseLeafDirections;  // Branch directions at end nodes
     GLuint leafInstanceVBO = 0;
-    GLuint leafShader = 0;
 
     void setupInstancing();
     void updateInstanceBuffer();
