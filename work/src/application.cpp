@@ -309,6 +309,12 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 	m_terrain.lightColor = activeLightColor;
 	m_terrain.draw(view, proj, lightSpaceMatrix, m_shadow_map_texture, m_enable_shadows, m_use_pcf);
 
+	// Fog for leaves
+	glUseProgram(m_trees.leafShader);
+	glUniform1i(glGetUniformLocation(m_trees.leafShader, "useFog"), useFog);
+	glUniform1i(glGetUniformLocation(m_trees.leafShader, "linearFog"), fogType == 0);
+	glUniform1f(glGetUniformLocation(m_trees.leafShader, "fogDensity"), fogDensity);
+
 	// Set clip plane uniform for trees
 	glUseProgram(m_trees.shader);
 	glUniform1i(glGetUniformLocation(m_trees.shader, "useFog"), useFog);
