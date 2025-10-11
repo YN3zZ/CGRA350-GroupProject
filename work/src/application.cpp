@@ -679,6 +679,11 @@ void Application::render() {
 	glUniform1i(glGetUniformLocation(m_water.shader, "linearFog"), fogType == 0);
 	glUniform1f(glGetUniformLocation(m_water.shader, "fogDensity"), fogDensity);
 
+	// Send terrain height for water and terrain collisions.
+	glActiveTexture(GL_TEXTURE31);
+	glBindTexture(GL_TEXTURE_2D, m_terrain.heightMap);
+	glUniform1i(glGetUniformLocation(m_water.shader, "uHeightMap"), 31);
+
     // Draw water with reflection/refraction textures
 	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
 	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;

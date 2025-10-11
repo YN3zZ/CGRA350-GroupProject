@@ -3,7 +3,7 @@
 // uniform data
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
-// User controlled uniforms.
+// Light
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
 uniform float roughness;
@@ -17,6 +17,9 @@ uniform float alpha;
 uniform float uTime;
 uniform float waterSpeed;
 uniform float waterAmplitude;
+// Collision with terrain.
+uniform float waterHeight;
+uniform sampler2D uHeightMap;
 // A single texture and normal map.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
@@ -171,6 +174,18 @@ float calculateFog() {
 
 
 void main() {
+	// Calculate terrain height relative to water height for interaction.
+	float terrainHeight = texture(uHeightMap, f_in.textureCoord.yx).r;
+	// Water is not visible when under the terrain.
+	float alphaValue = alpha;
+	if (waterHeight < terrainHeight) alphaValue = 0.0f;
+
+	// Make the shoreline colored and animated differently.
+	float depthFactor = 1.0f;
+	float distance = abs(terrainHeight - waterHeight);
+	depthFactor = clamp(distance, 0.0, 1.0f); // 0 is shore, 1 is deep.
+	depthFactor = 0.75f + depthFactor / 4.0f; // Make it less intense.
+
 	// Sky color. May make controllable later.
 	vec3 skyColor = vec3(0.5f, 0.65f, 0.8f);
 
@@ -296,19 +311,20 @@ void main() {
 	float desaturated = 0.5f;
 	vec3 fogColor = mix(lightColor, vec3(0.4f), desaturated);
 
-
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
-	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
 
 	if (uEnableReflections) {
 		// Mix environment color with PBR lighting, ReflectionBlend controls how much
 		finalColor = mix(environmentColor, finalColor, 1.0 - uReflectionBlend) + specular * 0.5;
 	}
 
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
+	finalColor = mix(lightColor, finalColor, depthFactor); // Terrain interaction.
+
 	// Allow HDR values (up to 1.5) when lens flare is active to enable bright reflections to create flare
 	float maxBrightness = uEnableLensFlare ? 1.5f : 1.0f;
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(maxBrightness));
 
-	fb_color = vec4(finalColor, alpha);
+	fb_color = vec4(finalColor, alphaValue);
 }

@@ -224,6 +224,9 @@ void PerlinNoise::createMesh() {
 	}
 	// Build and set gl_mesh.
 	terrain = mb.build();
+
+	// Create a heightMap for the water to collide with the terrain.
+	heightMap = createHeightTexture();
 }
 
 
