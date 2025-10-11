@@ -10,5 +10,7 @@ layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
 
 void main() {
-	gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+	vec4 pos = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+	// Set depth to far plane (z = w) to make sun appear infinitely far like skybox
+	gl_Position = pos.xyww;
 }
