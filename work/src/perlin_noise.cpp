@@ -90,15 +90,15 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpac
 	glUniform3fv(glGetUniformLocation(shader, "lightColor"), 1, value_ptr(lightColor));
 	glUniform1f(glGetUniformLocation(shader, "roughness"), roughness);
 	glUniform1f(glGetUniformLocation(shader, "metallic"), metallic);
-	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar ? 1 : 0);
+	glUniform1i(glGetUniformLocation(shader, "useOrenNayar"), useOrenNayar);
 
 	// Shadow params
 	glActiveTexture(GL_TEXTURE20);
 	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "uLightSpaceMatrix"), 1, false, value_ptr(lightSpaceMatrix));
 	glUniform1i(glGetUniformLocation(shader, "uShadowMap"), 20);
-	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows ? 1 : 0);
-	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF ? 1 : 0);
+	glUniform1i(glGetUniformLocation(shader, "uEnableShadows"), enableShadows);
+	glUniform1i(glGetUniformLocation(shader, "uUsePCF"), usePCF);
 
 	// Draw the terrain mesh.
 	terrain.draw();
@@ -137,7 +137,7 @@ void PerlinNoise::createMesh() {
 		}
 	}
 
-	// Create the vertices which have positions, normals and UVs.
+	// Create the vertices which have positions, normals and UVs, utilising the gradient between sorrounding vertices for the normals.
 	vertices = vector<mesh_vertex>(meshResolution * meshResolution);
 	for (int i = 0; i < meshResolution; ++i) {
 		for (int j = 0; j < meshResolution; ++j) {
@@ -170,7 +170,6 @@ void PerlinNoise::createMesh() {
 		float proportion = (height - min) / (max - min);
 		if (proportion >= 0.5 && proportion <= 0.7) {
 			validVertices.push_back(vertices[index].pos);
-			//vertices[index].pos.y = -2;
 		}
 	}
 	
@@ -277,7 +276,7 @@ vec3 PerlinNoise::sampleVertex(vec2 position) {
 			bestVert = vert;
 		}
 		// Good enough, so stop early to speed up.
-		if (bestDistance < 2) {
+		if (bestDistance < 1.5f) {
 			break;
 		}
 	}
