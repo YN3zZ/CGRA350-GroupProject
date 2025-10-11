@@ -31,6 +31,10 @@ uniform sampler2D uDuDvMap;
 uniform bool uEnableReflections;
 uniform float uWaveStrength;
 uniform float uReflectionBlend;
+// Fog
+uniform bool useFog;
+uniform bool linearFog;
+uniform float fogDensity;
 uniform bool uEnableLensFlare;
 
 
@@ -146,6 +150,23 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		// Hard shadows with hardware depth comparison
 		return texture(uShadowMap, projCoords);
 	}
+}
+
+
+float calculateFog() {
+	float fogFactor;
+	float dist = length(f_in.position);
+	if (linearFog) {
+		float fogMin = 0.1f;
+		float fogMax = 1.5f / fogDensity;
+		// Inverse linear min-max scaling so that far away is 0 and close is 1.
+		fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	}
+	else {
+		// Expoential scaling.
+		fogFactor = exp(-fogDensity * dist);
+	}
+	return clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
 }
 
 
@@ -269,8 +290,16 @@ void main() {
 		shadow = calculateShadow(f_in.lightSpacePos, normDir, lightDir);
 	}
 
+	// Calculate fog based on distance to camera.
+	float fogFactor = useFog ? calculateFog() : 1.0f;
+	// Desaturate light color for fog.
+	float desaturated = 0.5f;
+	vec3 fogColor = mix(lightColor, vec3(0.4f), desaturated);
+
+
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
 
 	if (uEnableReflections) {
 		// Mix environment color with PBR lighting, ReflectionBlend controls how much

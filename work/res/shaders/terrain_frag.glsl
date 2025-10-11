@@ -19,6 +19,10 @@ uniform int numTextures; // How many have been set out of 4.
 uniform sampler2DShadow uShadowMap;
 uniform bool uEnableShadows;
 uniform bool uUsePCF;
+// Fog
+uniform bool useFog;
+uniform bool linearFog;
+uniform float fogDensity;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -157,6 +161,23 @@ vec3 triplanarSample(sampler2D tex, vec3 pos, vec3 norm) {
 }
 
 
+float calculateFog() {
+	float fogFactor;
+	float dist = length(f_in.position);
+	if (linearFog) {
+		float fogMin = 0.1f;
+		float fogMax = 1.5f / fogDensity;
+		// Inverse linear min-max scaling so that far away is 0 and close is 1.
+		fogFactor = (fogMax - dist) / (fogMax - fogMin);
+	}
+	else {
+		// Expoential scaling.
+		fogFactor = exp(-fogDensity * dist);
+	}
+	return clamp(fogFactor, 0.0f, 1.0f); // Does not exceed [0, 1] range.
+}
+
+
 void main() {
 	// Getting height proportion to map texture color based on terrain height.
 	float minHeight = heightRange.x;
@@ -239,8 +260,15 @@ void main() {
 		shadow = calculateShadow(f_in.lightSpacePos, normDir, lightDir);
 	}
 
+	// Calculate fog based on distance to camera.
+	float fogFactor = useFog ? calculateFog() : 1.0f;
+	// Desaturate light color for fog.
+	float desaturated = 0.5f;
+	vec3 fogColor = mix(lightColor, vec3(0.4f), desaturated);
+
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(1.0f)); // Ensure values dont exceed 0 to 1 range.
 
 	fb_color = vec4(finalColor, 1.0f);
