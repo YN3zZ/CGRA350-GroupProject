@@ -22,8 +22,8 @@ public:
 	float meshScale = 10.0f; // Overall size of mesh. Matches size of terrain.
 	int meshResolution = 100; // Square this to get total vertices.
 	float waterAlpha = 0.9f;
-	float waterSpeed = 0.6f;
-	float waterAmplitude = 0.005f;
+	float waterSpeed = 0.15f;
+	float waterAmplitude = 0.01f;
 
 	float roughness = 0.02f;
 	float metallic = 0.25f; // 0 = normal, 1 = metal.

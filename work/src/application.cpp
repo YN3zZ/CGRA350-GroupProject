@@ -801,8 +801,8 @@ void Application::renderGUI() {
     ImGui::Text("Water Parameters");
     ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
-    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
-	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.5f, "%.3f", 4.0f);
+    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 0.15f);
+	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.15f, "%.3f", 4.0f);
 	ImGui::Checkbox("Enable Water Reflections", &m_enable_water_reflections);
 	if (m_enable_water_reflections) {
 		ImGui::SliderFloat("Wave Distortion Strength", &m_water_wave_strength, 0.0f, 0.3f, "%.3f");

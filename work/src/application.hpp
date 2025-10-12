@@ -77,7 +77,7 @@ private:
 	GLuint m_shadow_map_fbo = 0;
 	GLuint m_shadow_map_texture = 0;
 	GLuint m_shadow_depth_shader = 0;
-	int m_shadow_map_size = 2048;
+	int m_shadow_map_size = 4096;
 	bool m_enable_shadows = true;
 	bool m_use_pcf = true;
 
