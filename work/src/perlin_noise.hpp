@@ -17,13 +17,9 @@ private:
 
 public:
 	cgra::gl_mesh terrain;
-
-private:
-
-
-public:
 	GLuint shader = 0;
 	glm::mat4 modelTransform{ 1.0f };
+	GLuint heightMap = 0;
 
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
 	float noisePersistence = 0.4f; // Height loss between octaves.
@@ -32,7 +28,7 @@ public:
 	int noiseOctaves = 4; // Higher octaves add finer details.
 	float meshHeight = 8.0f; // Overall height.
 	float meshScale = 10.0f; // Overall size of mesh.
-	int meshResolution = 50; // Square this to get total vertices.
+	int meshResolution = 100; // Square this to get total vertices.
 	float textureScale = 15.0f; // Size of texture.
 	std::vector<cgra::mesh_vertex> vertices;
 
@@ -49,5 +45,6 @@ public:
 			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
+	GLuint createHeightTexture();
 	glm::vec3 sampleVertex(glm::vec2 position);
 };

@@ -9,6 +9,9 @@ uniform float uTime;
 uniform float meshScale;
 uniform float waterSpeed;
 uniform float waterAmplitude;
+// Collision with terrain.
+uniform float waterHeight;
+uniform sampler2D uHeightMap;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -28,19 +31,27 @@ out VertexData{
 } v_out;
 
 void main() {
+    // Calculate terrain height relative to water height for interaction.
+    float terrainHeight = texture(uHeightMap, uv.yx).r;
+
+    // Make the shoreline have less movement.
+    float distance = abs(terrainHeight - waterHeight);
+    float depthFactor = clamp(distance/2, 0.0, 1.0f); // 0 is shore, 1 is deep.
+
+
     // Wave displacement animation. Scales by mesh size.
     float frequency = 120.0f;
-    float amplitude = waterAmplitude;
-    float speed = waterSpeed * 4.0f;
-    float displacement = sin(cos(sin(uv.x)) * frequency + uTime * speed) + cos(cos(uv.y) * frequency/2.0f + uTime * speed);
+    float amplitude = waterAmplitude * depthFactor;
+    float speed = waterSpeed * 4.0f * depthFactor;
+    float displacement = cos(sin(uv.x) * frequency + uTime * speed) + sin(uv.y * frequency/2.0f + uTime * speed);
     vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
     // Store displacement and for depth coloring.
     v_out.displacement = displacement;
 
     // Get nearby gradient to recalculate normals (central difference derivative).
     float delta = 0.0001f;
-    float gradX = sin(cos(sin(uv.x + delta)) * frequency + uTime * speed) - sin(cos(sin(uv.x - delta)) * frequency + uTime * speed);
-    float gradY = cos(cos(uv.y + delta) * frequency/2.0f + uTime * speed) - cos(cos(uv.y - delta) * frequency/2.0f + uTime * speed);
+    float gradX = cos(sin(uv.x + delta) * frequency + uTime * speed) - cos(sin(uv.x - delta) * frequency + uTime * speed);
+    float gradY = sin((uv.y + delta) * frequency/2.0f + uTime * speed) - sin((uv.y - delta) * frequency/2.0f + uTime * speed);
     vec3 newNormal = normalize(vec3(-gradX, 1.0f, -gradY));
 
 	// transform vertex data to viewspace
