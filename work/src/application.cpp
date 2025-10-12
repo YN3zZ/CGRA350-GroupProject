@@ -677,6 +677,11 @@ void Application::render() {
 	glUniform1i(glGetUniformLocation(m_water.shader, "linearFog"), fogType == 0);
 	glUniform1f(glGetUniformLocation(m_water.shader, "fogDensity"), fogDensity);
 
+	// Send terrain height for water and terrain collisions.
+	glActiveTexture(GL_TEXTURE31);
+	glBindTexture(GL_TEXTURE_2D, m_terrain.heightMap);
+	glUniform1i(glGetUniformLocation(m_water.shader, "uHeightMap"), 31);
+
     // Draw water with reflection/refraction textures
 	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
 	vec3 activeLightColor = m_terrain.lightColor * sunVisibility;
@@ -801,8 +806,8 @@ void Application::renderGUI() {
     ImGui::Text("Water Parameters");
     ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
     ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
-    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 2.0f);
-	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.5f, "%.3f", 4.0f);
+    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 0.15f);
+	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.15f, "%.3f", 4.0f);
 	ImGui::Checkbox("Enable Water Reflections", &m_enable_water_reflections);
 	if (m_enable_water_reflections) {
 		ImGui::SliderFloat("Wave Distortion Strength", &m_water_wave_strength, 0.0f, 0.3f, "%.3f");

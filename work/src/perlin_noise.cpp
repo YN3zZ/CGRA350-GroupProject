@@ -105,6 +105,32 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpac
 }
 
 
+// For water interactions when colliding with terrain.
+GLuint PerlinNoise::createHeightTexture() {
+	// Store information in a vector.
+	std::vector<float> heightData(vertices.size());
+	for (size_t i = 0; i < vertices.size(); i++) {
+		heightData[i] = vertices[i].pos.y;
+	}
+
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	// Create texture. 32 bit float on the red channel.
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, meshResolution, meshResolution, 0, GL_RED, GL_FLOAT, heightData.data());
+
+	// Texture parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	return tex;
+}
+
+
 // Create terrain mesh using perlin noise heightmap.
 void PerlinNoise::createMesh() {
 	// Randomiser based on the user-controlled seed.
@@ -198,6 +224,9 @@ void PerlinNoise::createMesh() {
 	}
 	// Build and set gl_mesh.
 	terrain = mb.build();
+
+	// Create a heightMap for the water to collide with the terrain.
+	heightMap = createHeightTexture();
 }
 
 

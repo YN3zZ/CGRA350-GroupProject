@@ -77,14 +77,14 @@ private:
 	GLuint m_shadow_map_fbo = 0;
 	GLuint m_shadow_map_texture = 0;
 	GLuint m_shadow_depth_shader = 0;
-	int m_shadow_map_size = 2048;
+	int m_shadow_map_size = 4096;
 	bool m_enable_shadows = true;
 	bool m_use_pcf = true;
 
 	// Fog
 	bool useFog = true;
 	int fogType = 0;
-	float fogDensity = 0.05f;
+	float fogDensity = 0.01f;
 
 	// Water reflection/refraction
 	GLuint m_reflection_fbo = 0;

@@ -3,7 +3,7 @@
 // uniform data
 uniform mat4 uProjectionMatrix;
 uniform mat4 uModelViewMatrix;
-// User controlled uniforms.
+// Light
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
 uniform float roughness;
@@ -17,6 +17,9 @@ uniform float alpha;
 uniform float uTime;
 uniform float waterSpeed;
 uniform float waterAmplitude;
+// Collision with terrain.
+uniform float waterHeight;
+uniform sampler2D uHeightMap;
 // A single texture and normal map.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
@@ -31,11 +34,11 @@ uniform sampler2D uDuDvMap;
 uniform bool uEnableReflections;
 uniform float uWaveStrength;
 uniform float uReflectionBlend;
+uniform bool uEnableLensFlare;
 // Fog
 uniform bool useFog;
 uniform bool linearFog;
 uniform float fogDensity;
-uniform bool uEnableLensFlare;
 
 
 // viewspace data (this must match the output of the fragment shader)
@@ -171,27 +174,45 @@ float calculateFog() {
 
 
 void main() {
+	// Calculate terrain height relative to water height for interaction.
+	float terrainHeight = texture(uHeightMap, f_in.textureCoord.yx).r;
+	// Water is not visible when under the terrain.
+	float alphaValue = alpha;
+	if (waterHeight < terrainHeight) alphaValue = 0.0f;
+
+	// Make the shoreline colored and animated differently.
+	float distance = abs(terrainHeight - waterHeight);
+	float depthFactor = clamp(distance, 0.0f, 1.0f); // 0 is shore, 1 is deep.
+	// Make it less intense for final light highlight color.
+	float sharpness = 4.0f;
+	float shallowHighlight = 0.9f + clamp(depthFactor * sharpness, 0.0f, 1.0f) / 10.0f;
+
 	// Sky color. May make controllable later.
 	vec3 skyColor = vec3(0.5f, 0.65f, 0.8f);
 
 	vec2 uv = f_in.textureCoord * textureScale;
-
 	// Projective texture mapping for reflections/refractions
 	vec2 ndc = (f_in.clipSpace.xy / f_in.clipSpace.w);
 	vec2 refractCoords = ndc * 0.5 + 0.5;
 	vec2 reflectCoords = vec2(refractCoords.x, 1.0 - refractCoords.y);
 
 	// Texture wave animation. Might make these controllable in UI.
-	float frequency = 1.0f;
-	float amplitude = waterAmplitude;
-	// Both UV x and y have waves. Some scrolling is added to make it move around. Gives the appeearance of moving water.
-	float scrollAmount = uTime * waterSpeed * 0.01f;
+	float amplitude = waterAmplitude * depthFactor;
+	float speed = mix(0.1f, waterSpeed, depthFactor); // Never 0 speed, even at shoreline.
+
+	// UV for both x and y have waves. Gives the appeearance of moving water.
+	float scrollAmount = uTime * speed * 0.01f;
 	vec2 oldUV = uv.xy;
-	uv.y += sin(cos(oldUV.x) * frequency + uTime * waterSpeed) * amplitude + scrollAmount/2;
-	uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;
+	//uv.y += sin(cos(oldUV.x) * frequency + uTime * speed) * amplitude + scrollAmount/2;
+	//uv.x += cos(frequency/3 * uTime * waterSpeed) * amplitude + scrollAmount;
+	
+	uv.y += cos(oldUV.x + uTime * speed) * amplitude;
+	uv.x += sin(oldUV.y + uTime * speed) * amplitude;
+	// Add subtle directional drift.
+	uv += scrollAmount * vec2(1.0f, 0.5f);
 
 	// DuDv distortion for water waves with symmetric sampling to avoid directional bias
-	float moveFactor = uTime * waterSpeed * 0.03f;
+	float moveFactor = uTime * speed * 0.03f;
 
 	// Use mod to ensure UVs wrap properly
 	vec2 distortedUV1 = mod(f_in.textureCoord + vec2(moveFactor, moveFactor * 0.8), 1.0);
@@ -296,19 +317,20 @@ void main() {
 	float desaturated = 0.5f;
 	vec3 fogColor = mix(lightColor, vec3(0.4f), desaturated);
 
-
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
-	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
 
 	if (uEnableReflections) {
 		// Mix environment color with PBR lighting, ReflectionBlend controls how much
 		finalColor = mix(environmentColor, finalColor, 1.0 - uReflectionBlend) + specular * 0.5;
 	}
 
+	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
+	finalColor = mix(lightColor, finalColor, shallowHighlight); // Terrain interaction.
+
 	// Allow HDR values (up to 1.5) when lens flare is active to enable bright reflections to create flare
 	float maxBrightness = uEnableLensFlare ? 1.5f : 1.0f;
 	finalColor = clamp(finalColor, vec3(0.0f), vec3(maxBrightness));
 
-	fb_color = vec4(finalColor, alpha);
+	fb_color = vec4(finalColor, alphaValue);
 }
