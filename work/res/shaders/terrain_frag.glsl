@@ -113,9 +113,7 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		float shadow = 0.0;
 		vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
 
-		// Adaptive spacing: tighter at high res, wider at low res
-		float resolution = float(textureSize(uShadowMap, 0).x);
-		float spacing = 10.0 - resolution / 512.0;
+		float spacing = 0.5;
 
 		// Variable kernel size (using 1 for 3x3)
 		int pcfSize = 1;
@@ -131,8 +129,8 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
 		int kernelSize = pcfSize * 2 + 1;
 		shadow /= float(kernelSize * kernelSize);
 
-		// Map [0,1] to [0.5,1] - shadows never fully black (artistic choice)
-		return clamp(shadow * 0.5 + 0.5, 0.5, 1.0);
+		// Map [0,1] to [0.05,1] for very dark shadows
+		return clamp(shadow * 0.95 + 0.05, 0.05, 1.0);
 	} else {
 		// Hard shadows with hardware depth comparison
 		return texture(uShadowMap, projCoords);
