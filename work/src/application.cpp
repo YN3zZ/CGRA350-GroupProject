@@ -799,8 +799,23 @@ void Application::renderGUI() {
 		m_terrain.setShaderParams();
 		m_water.createMesh();
 		m_water.setShaderParams();
-    m_cached_water_height = m_water.waterHeight;
+		m_cached_water_height = m_water.waterHeight;
 	}
+
+	// Texture chooser.
+	const char* textureNames[] = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "haystack", "ice_field" };
+	int textureCount = 8;
+	ImGui::Text("Terrain textures (bottom up)");
+	// Choose the textures out of the options (string names).
+	for (int i = 0; i < m_terrain.textureAmount; i++) {
+		if (ImGui::Combo(("Texture " + std::to_string(i + 1)).c_str(), &m_terrain.chosenTextures[i], textureNames, textureCount)) {
+			m_terrain.setShaderParams();
+		}
+	}
+	// Add or remove textures.
+	if (ImGui::Button("   +   ")) m_terrain.textureAmount += m_terrain.textureAmount < 8 ? 1 : 0;
+	ImGui::SameLine();
+	if (ImGui::Button("   -   ")) m_terrain.textureAmount -= m_terrain.textureAmount > 0 ? 1 : 0;
 
 	ImGui::Separator();
     ImGui::Text("Water Parameters");
