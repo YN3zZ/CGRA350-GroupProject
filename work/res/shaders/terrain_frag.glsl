@@ -12,9 +12,9 @@ uniform bool useOrenNayar;
 // Texture mapping.
 uniform vec2 heightRange;
 uniform float textureScale;
-uniform sampler2D uTextures[4]; // Up to 4 textures.
-uniform sampler2D uNormalMaps[4]; // Up to 4 normals.
-uniform int numTextures; // How many have been set out of 4.
+uniform sampler2D uTextures[8]; // Up to 8 textures.
+uniform sampler2D uNormalMaps[8]; // Up to 8 normals.
+uniform int numTextures; // How many have been set out of 8.
 // Shadow mapping.
 uniform sampler2DShadow uShadowMap;
 uniform bool uEnableShadows;

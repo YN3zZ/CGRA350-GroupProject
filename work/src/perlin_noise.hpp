@@ -11,8 +11,9 @@ private:
 	float generateNoise(glm::vec2 pos);
 	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
 	glm::vec2 getHeightRange();
-	std::vector<GLuint> textures;
-	std::vector<GLuint> normalMaps;
+	void loadTexture(int index);
+	GLuint textures[8]{};
+	GLuint normalMaps[8]{};
 	std::vector<glm::vec3> validVertices;
 
 public:
@@ -32,6 +33,10 @@ public:
 	float textureScale = 15.0f; // Size of texture.
 	std::vector<cgra::mesh_vertex> vertices;
 
+	// User chosen textures that smoothly transition based on height.
+	int chosenTextures[8]{};
+	int textureAmount = 1;
+
 	// Lighting params.
 	glm::vec3 lightDirection{ 0.2f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
 	glm::vec3 lightColor{ 1.0f };
@@ -40,11 +45,11 @@ public:
 	bool useOrenNayar = false;
 
 	// Constructor and public methods.
-	PerlinNoise();
+	PerlinNoise() {};
 	void draw(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& lightSpaceMatrix = glm::mat4(1.0f),
 			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
-	GLuint createHeightTexture();
+	GLuint createHeightMap();
 	glm::vec3 sampleVertex(glm::vec2 position);
 };

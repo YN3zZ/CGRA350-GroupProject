@@ -15,18 +15,15 @@ using namespace glm;
 using namespace cgra;
 
 
-const vector<string> textureNames = { "sandyground1", "patchy-meadow1", "slatecliffrock" };
+const vector<string> textureNames = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "haystack", "ice_field" };
 
-// Initially generate the mesh and load the textures. Initialise shader and color separately.
-PerlinNoise::PerlinNoise() {
+void PerlinNoise::loadTexture(int index) {
 	// Load all the textures using the path strings.
-	for (int i = 0; i < textureNames.size(); i++) {
-		string pathStart = CGRA_SRCDIR + string("/res/textures/") + textureNames[i];
-		rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
-		rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
-		textures.push_back(textureImage.uploadTexture());
-		normalMaps.push_back(normalImage.uploadTexture());
-	}
+	string pathStart = CGRA_SRCDIR + string("/res/textures/terrain/") + textureNames[index];
+	rgba_image textureImage = rgba_image(pathStart + string("_albedo.png"));
+	rgba_image normalImage = rgba_image(pathStart + string("_normal.png"));
+	textures[index] = textureImage.uploadTexture();
+	normalMaps[index] = normalImage.uploadTexture();
 }
 
 
@@ -34,23 +31,27 @@ PerlinNoise::PerlinNoise() {
 void PerlinNoise::setShaderParams() {
 	// Only update uniforms for texture and textureSize when mesh is updated.
 	glUseProgram(shader);
-	int textureCount = textureNames.size();
-	for (int i = 0; i < textureCount; i++) {
+	for (int i = 0; i < textureAmount; i++) {
+		int index = chosenTextures[i];
+		// Either reuse from cache or load new texture.
+		if (textures[index] == 0) {
+			loadTexture(index);
+		}
 		// Textures
 		glActiveTexture(GL_TEXTURE0 + i); // GL_TEXTURE0 = 0x84C0 = 33984. Add 1 for each subsequent location.
-		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glBindTexture(GL_TEXTURE_2D, textures[index]);
 		// Access array element of uniform textures shader parameter.
 		string name = "uTextures[" + to_string(i) + "]";
 		glUniform1i(glGetUniformLocation(shader, name.c_str()), i);
 
 		// Normal Maps
 		glActiveTexture(GL_TEXTURE12 + i);
-		glBindTexture(GL_TEXTURE_2D, normalMaps[i]);
+		glBindTexture(GL_TEXTURE_2D, normalMaps[index]);
 		// Access array element of uniform textures shader parameter.
 		name = "uNormalMaps[" + to_string(i) + "]";
 		glUniform1i(glGetUniformLocation(shader, name.c_str()), 12 + i);
 	}
-	glUniform1i(glGetUniformLocation(shader, "numTextures"), textureCount);
+	glUniform1i(glGetUniformLocation(shader, "numTextures"), textureAmount);
 	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 
 	// Send uniform for height range and model color terrain coloring.
@@ -106,7 +107,7 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpac
 
 
 // For water interactions when colliding with terrain.
-GLuint PerlinNoise::createHeightTexture() {
+GLuint PerlinNoise::createHeightMap() {
 	// Store information in a vector.
 	std::vector<float> heightData(vertices.size());
 	for (size_t i = 0; i < vertices.size(); i++) {
@@ -226,7 +227,7 @@ void PerlinNoise::createMesh() {
 	terrain = mb.build();
 
 	// Create a heightMap for the water to collide with the terrain.
-	heightMap = createHeightTexture();
+	heightMap = createHeightMap();
 }
 
 
