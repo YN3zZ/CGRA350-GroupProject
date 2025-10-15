@@ -83,8 +83,8 @@ private:
 
 	// Fog
 	bool useFog = true;
-	int fogType = 0;
-	float fogDensity = 0.01f;
+	int fogType = 0; // 0 is linear, 1 is exponential.
+	float fogDensity = 0.02f;
 
 	// Water reflection/refraction
 	GLuint m_reflection_fbo = 0;

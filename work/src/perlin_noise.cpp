@@ -15,7 +15,7 @@ using namespace glm;
 using namespace cgra;
 
 
-const vector<string> textureNames = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "haystack", "ice_field" };
+const vector<string> textureNames = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
 
 void PerlinNoise::loadTexture(int index) {
 	// Load all the textures using the path strings.

@@ -803,8 +803,8 @@ void Application::renderGUI() {
 	}
 
 	// Texture chooser.
-	const char* textureNames[] = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "haystack", "ice_field" };
-	int textureCount = 8;
+	const char* textureNames[] = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
+	int textureCount = 7;
 	ImGui::Text("Terrain textures (bottom up)");
 	// Choose the textures out of the options (string names).
 	for (int i = 0; i < m_terrain.textureAmount; i++) {
@@ -813,9 +813,15 @@ void Application::renderGUI() {
 		}
 	}
 	// Add or remove textures. Between 1 and the textureLimit.
-	if (ImGui::Button("   +   ")) m_terrain.textureAmount += m_terrain.textureAmount < m_terrain.textureLimit ? 1 : 0;
+	if (ImGui::Button("   +   ")) {
+		m_terrain.textureAmount += m_terrain.textureAmount < m_terrain.textureLimit ? 1 : 0;
+		m_terrain.setShaderParams();
+	}
 	ImGui::SameLine();
-	if (ImGui::Button("   -   ")) m_terrain.textureAmount -= m_terrain.textureAmount > 1 ? 1 : 0;
+	if (ImGui::Button("   -   ")) {
+		m_terrain.textureAmount -= m_terrain.textureAmount > 1 ? 1 : 0;
+		m_terrain.setShaderParams();
+	}
 
 	ImGui::Separator();
     ImGui::Text("Water Parameters");
