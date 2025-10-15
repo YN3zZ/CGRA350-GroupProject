@@ -36,6 +36,7 @@ public:
 	// User chosen textures that smoothly transition based on height.
 	int chosenTextures[8]{};
 	int textureAmount = 1;
+	int textureLimit = 6;
 
 	// Lighting params.
 	glm::vec3 lightDirection{ 0.2f, -1.0f, -1.0f }; // The light points down and the user controls the x angle.
