@@ -812,10 +812,10 @@ void Application::renderGUI() {
 			m_terrain.setShaderParams();
 		}
 	}
-	// Add or remove textures.
-	if (ImGui::Button("   +   ")) m_terrain.textureAmount += m_terrain.textureAmount < 8 ? 1 : 0;
+	// Add or remove textures. Between 1 and the textureLimit.
+	if (ImGui::Button("   +   ")) m_terrain.textureAmount += m_terrain.textureAmount < m_terrain.textureLimit ? 1 : 0;
 	ImGui::SameLine();
-	if (ImGui::Button("   -   ")) m_terrain.textureAmount -= m_terrain.textureAmount > 0 ? 1 : 0;
+	if (ImGui::Button("   -   ")) m_terrain.textureAmount -= m_terrain.textureAmount > 1 ? 1 : 0;
 
 	ImGui::Separator();
     ImGui::Text("Water Parameters");
