@@ -23,6 +23,7 @@ public:
     float stepLength = 0.86f;
     float branchTaper = 0.98f;
     int cylinderSides = 8;
+    float initialRadius = 0.1f;
     
     // Generate the L-System string
     std::string generateString();

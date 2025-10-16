@@ -27,6 +27,7 @@ public:
     GLuint leafShader = 0;
     GLuint leafTexture = 0;
     float leafSize = 0.4f;
+    float leafOffset = 0.3f; // Offset backwards along branch to prevent floating appearance
     bool renderLeaves = false;
 
     TreeGenerator() = default;

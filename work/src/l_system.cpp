@@ -49,7 +49,7 @@ gl_mesh LSystem::generateTreeMesh(const string& lSystemString, vector<vec3>& out
     turtle.rotation = mat4(1.0f);
 
     unsigned int vertexIndex = 0;
-    float currentRadius = 0.1f;
+    float currentRadius = initialRadius;
     const float MIN_RADIUS = 0.001f;
     bool nextIsNewBranch = false;
 

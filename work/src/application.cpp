@@ -865,6 +865,10 @@ void Application::renderGUI() {
 			meshNeedsUpdate = true;
 		}
 
+		if (ImGui::SliderFloat("Initial Radius", &m_trees.lSystem.initialRadius, 0.01f, 0.5f, "%.3f")) {
+			meshNeedsUpdate = true;
+		}
+
 		// Placement parameters that don't affect mesh
 		bool placementNeedsUpdate = false;
 
@@ -885,6 +889,9 @@ void Application::renderGUI() {
 			// Just visual toggle
 		}
 		if (ImGui::SliderFloat("Leaf Size", &m_trees.leafSize, 0.1f, 1.0f, "%.2f")) {
+			meshNeedsUpdate = true;
+		}
+		if (ImGui::SliderFloat("Leaf Offset", &m_trees.leafOffset, 0.0f, 1.0f, "%.2f")) {
 			meshNeedsUpdate = true;
 		}
 
