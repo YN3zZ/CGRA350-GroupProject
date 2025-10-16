@@ -374,13 +374,13 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Red button, white text, red background
     style.Colors[ImGuiCol_Button] = ImVec4(0.9f, 0.1f, 0.37f, 1.0f);
     style.Colors[ImGuiCol_FrameBg] = ImVec4(0.65f, 0.25f, 0.37f, 1.0f);
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.3f, 0.2f, 0.2f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.25f, 0.2f, 0.2f, 1.0f);
     // Window title bar
     style.Colors[ImGuiCol_TitleBg] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
     style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
     style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);
 	// Headers that open up into the controllable categories.
-	style.Colors[ImGuiCol_Header] = ImVec4(0.6f, 0.15f, 0.0f, 1.0f);
+	style.Colors[ImGuiCol_Header] = ImVec4(0.5f, 0.1f, 0.1f, 1.0f);
 	style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.7f, 0.3f, 0.3f, 1.0f);
 	style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.65f, 0.4f, 0.4f, 1.0f);
 }
