@@ -227,6 +227,8 @@ void TreeGenerator::generateTreesOnTerrain(PerlinNoise* perlinNoise) {
             vec3 worldLeafPos = vec3(transform * vec4(leafPos, 1.0f));
             vec3 worldBranchDir = normalize(vec3(transform * vec4(branchDir, 0.0f)));
 
+            worldLeafPos -= worldBranchDir * (scale * leafSize * this->leafOffset);
+
             // Create rotation matrix to align leaf with branch direction
             // The leaf mesh grows along the branch direction (Y-axis in local space)
             vec3 up = worldBranchDir;
