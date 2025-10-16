@@ -42,7 +42,7 @@ void TreeGenerator::loadTextures() {
     useTextures = true;
 
     // Load leaf texture
-    string leafPath = CGRA_SRCDIR + string("/res/textures/leaves_texture.png");
+    string leafPath = CGRA_SRCDIR + string("/res/textures/leaves/plant_03.png");
     rgba_image leafImage = rgba_image(leafPath);
     leafTexture = leafImage.uploadTexture();
 
@@ -121,9 +121,37 @@ void TreeGenerator::updateInstanceBuffer() {
 }
 
 void TreeGenerator::generateLeafMesh() {
-    // Load OBJ mesh
-    string objPath = CGRA_SRCDIR + string("/res/assets/leaves.obj");
-    mesh_builder mb = load_wavefront_data(objPath);
+    // Create cross-quad billboard geometry (two perpendicular quads forming an X)
+    mesh_builder mb;
+
+    float size = 1.0f; // Will be scaled by leafSize in transforms
+
+    // First quad (aligned with XY plane)
+    // Vertices 0-3
+    mb.push_vertex({vec3(-size, 0, 0), vec3(0, 1, 0), vec2(0, 0)}); // Bottom left
+    mb.push_vertex({vec3(size, 0, 0), vec3(0, 1, 0), vec2(1, 0)});  // Bottom right
+    mb.push_vertex({vec3(size, size*2, 0), vec3(0, 1, 0), vec2(1, 1)}); // Top right
+    mb.push_vertex({vec3(-size, size*2, 0), vec3(0, 1, 0), vec2(0, 1)}); // Top left
+
+    // Second quad (aligned with ZY plane, perpendicular to first)
+    // Vertices 4-7
+    mb.push_vertex({vec3(0, 0, -size), vec3(1, 0, 0), vec2(0, 0)}); // Bottom left
+    mb.push_vertex({vec3(0, 0, size), vec3(1, 0, 0), vec2(1, 0)});  // Bottom right
+    mb.push_vertex({vec3(0, size*2, size), vec3(1, 0, 0), vec2(1, 1)}); // Top right
+    mb.push_vertex({vec3(0, size*2, -size), vec3(1, 0, 0), vec2(0, 1)}); // Top left
+
+    // First quad faces (both sides for proper visibility)
+    mb.push_indices({0, 1, 2});
+    mb.push_indices({0, 2, 3});
+    mb.push_indices({0, 2, 1}); // Back face
+    mb.push_indices({0, 3, 2}); // Back face
+
+    // Second quad faces (both sides)
+    mb.push_indices({4, 5, 6});
+    mb.push_indices({4, 6, 7});
+    mb.push_indices({4, 6, 5}); // Back face
+    mb.push_indices({4, 7, 6}); // Back face
+
     leafMesh = mb.build();
 }
 

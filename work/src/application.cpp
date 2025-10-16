@@ -1279,11 +1279,13 @@ void Application::renderShadowMap() {
 
 	// render terrain
 	glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uUseInstancing"), 0);
+	glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uRenderingLeaves"), 0);
 	m_terrain.terrain.draw();
 
 	// render trees
 	if (!m_trees.treeTransforms.empty()) {
 		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uUseInstancing"), 1);
+		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uRenderingLeaves"), 0);
 
 		// Bind tree mesh VAO (with instance attributes already set up)
 		glBindVertexArray(m_trees.treeMesh.vao);
@@ -1298,6 +1300,12 @@ void Application::renderShadowMap() {
 	// render leaves
 	if (!m_trees.leafTransforms.empty() && m_trees.renderLeaves) {
 		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uUseInstancing"), 1);
+		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uRenderingLeaves"), 1);
+
+		// Bind leaf texture for alpha testing
+		glActiveTexture(GL_TEXTURE16);
+		glBindTexture(GL_TEXTURE_2D, m_trees.leafTexture);
+		glUniform1i(glGetUniformLocation(m_shadow_depth_shader, "uLeafTexture"), 16);
 
 		// Disable culling for leaves
 		glDisable(GL_CULL_FACE);

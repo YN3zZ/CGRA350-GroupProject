@@ -1,6 +1,7 @@
 #version 330 core
 
 layout(location = 0) in vec3 aPosition;
+layout(location = 2) in vec2 aTexCoord;
 
 // Per-instance attributes (for trees/leaves)
 layout(location = 3) in vec4 aInstanceMatrix0;
@@ -11,7 +12,11 @@ layout(location = 6) in vec4 aInstanceMatrix3;
 uniform mat4 uLightSpaceMatrix;
 uniform bool uUseInstancing;
 
+out vec2 vTexCoord;
+
 void main() {
+    vTexCoord = aTexCoord;
+
     if (uUseInstancing) {
         // Instanced rendering (trees/leaves)
         mat4 instanceMatrix = mat4(
