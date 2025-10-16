@@ -19,7 +19,8 @@ uniform float waterSpeed;
 uniform float waterAmplitude;
 // Collision with terrain.
 uniform float waterHeight;
-uniform sampler2D uHeightMap;
+uniform vec2 terrainHeightRange;
+uniform sampler2D uTerrainHeightMap;
 // A single texture and normal map.
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
@@ -175,13 +176,14 @@ float calculateFog() {
 
 void main() {
 	// Calculate terrain height relative to water height for interaction.
-	float terrainHeight = texture(uHeightMap, f_in.textureCoord.yx).r;
+	float terrainHeight = texture(uTerrainHeightMap, f_in.textureCoord.yx).r;
 	// Water is not visible when under the terrain.
 	float alphaValue = alpha;
-	if (waterHeight < terrainHeight) alphaValue = 0.0f;
+	float baseHeight = mix(terrainHeightRange.x, terrainHeightRange.y, waterHeight); // Proportion of terrain height.
+	if (baseHeight < terrainHeight) alphaValue = 0.0f;
 
 	// Make the shoreline colored and animated differently.
-	float distance = abs(terrainHeight - waterHeight);
+	float distance = abs(terrainHeight - baseHeight);
 	float depthFactor = clamp(distance, 0.0f, 1.0f); // 0 is shore, 1 is deep.
 	// Make it less intense for final light highlight color.
 	float sharpness = 4.0f;

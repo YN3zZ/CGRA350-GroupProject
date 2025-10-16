@@ -15,7 +15,7 @@ using namespace glm;
 using namespace cgra;
 
 
-const vector<string> textureNames = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
+const vector<string> textureNames = { "patchy-meadow", "sandyground", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
 
 void PerlinNoise::loadTexture(int index) {
 	// Load all the textures using the path strings.
@@ -55,25 +55,25 @@ void PerlinNoise::setShaderParams() {
 	glUniform1f(glGetUniformLocation(shader, "textureScale"), sqrt(meshScale) / textureScale);
 
 	// Send uniform for height range and model color terrain coloring.
-	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(getHeightRange()));
+	glUniform2fv(glGetUniformLocation(shader, "heightRange"), 1, value_ptr(heightRange));
 }
 
 
 // Get the min and max height (as x, y) of the terrain for texturing.
-vec2 PerlinNoise::getHeightRange() {
+void PerlinNoise::calculateHeightRange() {
 	// Min and max height initially are the height of the first vertex.
-	vec2 heightRange(vertices[0].pos.y);
+	vec2 range(vertices[0].pos.y);
 	for (int i = 1; i < vertices.size(); i++) {
 		float vertHeight = vertices[i].pos.y;
 		// Adjust the min/max if any vertex is lower/higher.
-		if (heightRange.x > vertHeight) {
-			heightRange.x = vertHeight;
+		if (range.x > vertHeight) {
+			range.x = vertHeight;
 		}
-		if (heightRange.y < vertHeight) {
-			heightRange.y = vertHeight;
+		if (range.y < vertHeight) {
+			range.y = vertHeight;
 		}
 	}
-	return heightRange;
+	heightRange = range;
 }
 
 
@@ -107,7 +107,8 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpac
 
 
 // For water interactions when colliding with terrain.
-void PerlinNoise::createHeightMap() {
+void PerlinNoise::createHeightMap(float height) {
+	waterHeight = height; // Store water height for controlling tree spawning locations.
 	// Store information in a vector.
 	std::vector<float> heightData(vertices.size());
 	for (size_t i = 0; i < vertices.size(); i++) {
@@ -187,19 +188,6 @@ void PerlinNoise::createMesh() {
 			vertices[vertIndex] = mesh_vertex{ pos, norm, uv };
 		}
 	}
-
-	// Get places where trees can grow.
-	validVertices = vector<vec3>();
-	vec2 heightRange = getHeightRange();
-	float min = heightRange.x;
-	float max = heightRange.y;
-	for (int index = 0; index < meshResolution * meshResolution; index++) {
-		float height = vertices[index].pos.y;
-		float proportion = (height - min) / (max - min);
-		if (proportion >= 0.5 && proportion <= 0.7) {
-			validVertices.push_back(vertices[index].pos);
-		}
-	}
 	
 	// Create the triangles. Ignore the final vertex (meshResolution - 1) as the quads/triangles are formed up to it.
 	mesh_builder mb;
@@ -227,8 +215,9 @@ void PerlinNoise::createMesh() {
 	// Build and set gl_mesh.
 	terrain = mb.build();
 
-	// Create a heightMap for the water to collide with the terrain.
-	createHeightMap();
+	// Create a heightMap and range for the water to collide with the terrain.
+	//createHeightMap();
+	calculateHeightRange();
 }
 
 
@@ -288,20 +277,29 @@ vec3 PerlinNoise::sampleVertex(vec2 position) {
 	int vertCount = meshResolution - 1;
 
 	float x = position.x;
-	float y = position.y;
+	float z = position.y;
 
 	// We want the closest valid vertex.
 	float bestDistance = 10000;
 	vec3 bestVert = vec3(0);
-	for (vec3 vert : validVertices) {
-		float distance = sqrt(pow(vert.x - x, 2) + pow(vert.y - y, 2));
-		if (distance < bestDistance) {
-			bestDistance = distance;
-			bestVert = vert;
-		}
-		// Good enough, so stop early to speed up.
-		if (bestDistance < 1.5f) {
-			break;
+	// Get places where trees can grow.
+	float min = heightRange.x;
+	float max = heightRange.y;
+	for (int index = 0; index < meshResolution * meshResolution; index++) {
+		vec3 vert = vertices[index].pos;
+		float heightProp = (vert.y - min) / (max - min);
+		// Trees can only spawn above water and not on the tips of mountains.
+		if (heightProp >= waterHeight && heightProp <= 0.95) {
+			// Find the closest vertex (horizontally) to the position.
+			float distance = sqrt(pow(vert.x - x, 2) + pow(vert.z - z, 2));
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				bestVert = vert;
+			}
+			// Good enough, so stop early to speed up.
+			if (bestDistance < 1.5f) {
+				break;
+			}
 		}
 	}
 
