@@ -98,7 +98,6 @@ private:
 	bool m_enable_water_reflections = true;
 	float m_water_wave_strength = 0.03f;
 	float m_water_reflection_blend = 0.7f;
-	float m_cached_water_height = -0.4f;
 
 	// Lens flare post-processing
 	GLuint m_scene_fbo = 0;
