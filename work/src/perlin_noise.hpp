@@ -10,17 +10,19 @@ class PerlinNoise {
 private:
 	float generateNoise(glm::vec2 pos);
 	float generatePerlinNoise(glm::vec2 pos, const std::vector<glm::vec2> &octaveOffsets);
-	glm::vec2 getHeightRange();
 	void loadTexture(int index);
+	void calculateHeightRange();
 	GLuint textures[8]{};
 	GLuint normalMaps[8]{};
 	std::vector<glm::vec3> validVertices;
+	float waterHeight;
 
 public:
 	cgra::gl_mesh terrain;
 	GLuint shader = 0;
 	glm::mat4 modelTransform{ 1.0f };
 	GLuint heightMap = 0;
+	glm::vec2 heightRange{ 0.0f };
 
 	int noiseSeed = 0; // Used to control what noise is randomly generated for each octave.
 	float noisePersistence = 0.4f; // Height loss between octaves.
@@ -34,7 +36,7 @@ public:
 	std::vector<cgra::mesh_vertex> vertices;
 
 	// User chosen textures that smoothly transition based on height.
-	int chosenTextures[8] = { 0, 1, 0, 0, 0, 0, 0, 0 };
+	int chosenTextures[8] = { 1, 0, 0, 0, 0, 0, 0, 0 };
 	int textureAmount = 2;
 	int textureLimit = 6;
 
@@ -51,6 +53,6 @@ public:
 			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
-	void createHeightMap();
+	void createHeightMap(float waterHeight);
 	glm::vec3 sampleVertex(glm::vec2 position);
 };

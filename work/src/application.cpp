@@ -117,6 +117,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Set terrain and water texture params after trees are generated to prevent visual bugs.
     m_terrain.setShaderParams();
     m_water.setShaderParams();
+	m_terrain.createHeightMap(m_water.waterHeight);
 
     // Build skybox shader
     shader_builder sb_skybox;
@@ -680,7 +681,8 @@ void Application::render() {
 	// Send terrain height for water and terrain collisions.
 	glActiveTexture(GL_TEXTURE31);
 	glBindTexture(GL_TEXTURE_2D, m_terrain.heightMap);
-	glUniform1i(glGetUniformLocation(m_water.shader, "uHeightMap"), 31);
+	glUniform1i(glGetUniformLocation(m_water.shader, "uTerrainHeightMap"), 31);
+	glUniform2fv(glGetUniformLocation(m_water.shader, "terrainHeightRange"), 1, value_ptr(m_terrain.heightRange));
 
     // Draw water with reflection/refraction textures
 	float sunVisibility = glm::smoothstep(-10.0f, 0.0f, m_sunElevation);
@@ -801,13 +803,14 @@ void Application::renderGUI() {
 			meshNeedsUpdate = true;
 			m_terrain.createMesh();
 			m_terrain.setShaderParams();
+			m_terrain.createHeightMap(m_water.waterHeight);
 			m_water.createMesh();
 			m_water.setShaderParams();
 			m_trees.regenerateOnTerrain(&m_terrain);
 		}
 
 		// Texture chooser.
-		const char* textureNames[] = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
+		const char* textureNames[] = { "patchy-meadow", "sandyground", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
 		int textureCount = 7;
 		ImGui::Text("Terrain textures (bottom up)");
 		// Choose the textures out of the options (string names).
@@ -894,7 +897,7 @@ void Application::renderGUI() {
 		if (ImGui::SliderFloat("Water Height", &m_water.waterHeight, 0.0f, 0.9f)) {
 			m_water.createMesh();
 			m_water.setShaderParams();
-			m_terrain.createHeightMap();
+			m_terrain.createHeightMap(m_water.waterHeight);
 			m_trees.regenerateOnTerrain(&m_terrain);
 		}
 		ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);

@@ -11,7 +11,8 @@ uniform float waterSpeed;
 uniform float waterAmplitude;
 // Collision with terrain.
 uniform float waterHeight;
-uniform sampler2D uHeightMap;
+uniform vec2 terrainHeightRange;
+uniform sampler2D uTerrainHeightMap;
 
 // mesh data
 layout(location = 0) in vec3 aPosition;
@@ -32,19 +33,19 @@ out VertexData{
 
 void main() {
     // Calculate terrain height relative to water height for interaction.
-    float terrainHeight = texture(uHeightMap, uv.yx).r;
+    float terrainHeight = texture(uTerrainHeightMap, uv.yx).r;
 
     // Make the shoreline have less movement.
     float distance = abs(terrainHeight - waterHeight);
     float depthFactor = clamp(distance/2, 0.0, 1.0f); // 0 is shore, 1 is deep.
 
-
+    float baseHeight = mix(terrainHeightRange.x, terrainHeightRange.y, waterHeight); // Proportion of terrain height.
     // Wave displacement animation. Scales by mesh size.
     float frequency = 120.0f;
     float amplitude = waterAmplitude * depthFactor;
     float speed = waterSpeed * 4.0f * depthFactor;
     float displacement = cos(sin(uv.x) * frequency + uTime * speed) + sin(uv.y * frequency/2.0f + uTime * speed);
-    vec3 newPosition = aPosition + vec3(0, displacement * amplitude, 0);
+    vec3 newPosition = aPosition + vec3(0, baseHeight + displacement * amplitude, 0);
     // Store displacement and for depth coloring.
     v_out.displacement = displacement;
 

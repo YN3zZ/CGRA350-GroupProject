@@ -141,8 +141,8 @@ void Water::createMesh() {
 			float x = (-1.0f + 2.0f * u) * meshScale;
 			float z = (-1.0f + 2.0f * v) * meshScale;
 
-			// Position, normal, and uv. Simple upwards normal because the waves are generated in the shader.
-			vec3 pos = vec3(x, waterHeight, z);
+			// Position, normal, and uv. Simple upwards normal and zero height because the waves are generated in the shader.
+			vec3 pos = vec3(x, 0, z);
 			vec2 uv(u, v);
 			vec3 norm = vec3(0, 1, 0);
 
