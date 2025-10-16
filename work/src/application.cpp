@@ -512,7 +512,7 @@ void Application::render() {
 		glEnable(GL_CLIP_DISTANCE0);
 
 		// Mirror camera across water plane
-		float waterHeight = m_cached_water_height;
+		float waterHeight = m_water.waterHeight;
 		float distance = 2.0f * (cameraPosition.y - waterHeight);
 		vec3 reflectedCameraPos = cameraPosition;
 		reflectedCameraPos.y -= distance;
@@ -803,7 +803,6 @@ void Application::renderGUI() {
 			m_terrain.setShaderParams();
 			m_water.createMesh();
 			m_water.setShaderParams();
-			m_cached_water_height = m_water.waterHeight;
 			m_trees.regenerateOnTerrain(&m_terrain);
 		}
 
@@ -892,11 +891,10 @@ void Application::renderGUI() {
 
 	ImGui::Separator();
     if (ImGui::CollapsingHeader("Water Parameters")) {
-		if (ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f)) {
+		if (ImGui::SliderFloat("Water Height", &m_water.waterHeight, 0.0f, 0.9f)) {
 			m_water.createMesh();
 			m_water.setShaderParams();
 			m_terrain.createHeightMap();
-			m_cached_water_height = m_water.waterHeight;
 			m_trees.regenerateOnTerrain(&m_terrain);
 		}
 		ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
