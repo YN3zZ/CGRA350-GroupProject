@@ -892,7 +892,13 @@ void Application::renderGUI() {
 
 	ImGui::Separator();
     if (ImGui::CollapsingHeader("Water Parameters")) {
-		ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
+		if (ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f)) {
+			m_water.createMesh();
+			m_water.setShaderParams();
+			m_terrain.createHeightMap();
+			m_cached_water_height = m_water.waterHeight;
+			m_trees.regenerateOnTerrain(&m_terrain);
+		}
 		ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
 		ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 0.15f);
 		ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.15f, "%.3f", 4.0f);
