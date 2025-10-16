@@ -134,7 +134,7 @@ private:
 	bool m_lens_use_texture = true;
 	int m_ghost_count = 5;
 	float m_ghost_dispersal = 0.7f;
-	float m_ghost_threshold = 20.0f;
+	float m_ghost_threshold = 12.0f;
 	float m_ghost_distortion = 7.5f;
 	float m_halo_radius = 0.4f;
 	float m_halo_threshold = 20.0f;

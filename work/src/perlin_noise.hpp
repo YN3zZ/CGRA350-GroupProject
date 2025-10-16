@@ -30,12 +30,12 @@ public:
 	float meshHeight = 8.0f; // Overall height.
 	float meshScale = 10.0f; // Overall size of mesh.
 	int meshResolution = 100; // Square this to get total vertices.
-	float textureScale = 15.0f; // Size of texture.
+	float textureScale = 18.0f; // Size of texture.
 	std::vector<cgra::mesh_vertex> vertices;
 
 	// User chosen textures that smoothly transition based on height.
-	int chosenTextures[8]{};
-	int textureAmount = 1;
+	int chosenTextures[8] = { 0, 1, 0, 0, 0, 0, 0, 0 };
+	int textureAmount = 2;
 	int textureLimit = 6;
 
 	// Lighting params.
@@ -51,6 +51,6 @@ public:
 			  GLuint shadowMapTexture = 0, bool enableShadows = false, bool usePCF = true);
 	void setShaderParams();
 	void createMesh();
-	GLuint createHeightMap();
+	void createHeightMap();
 	glm::vec3 sampleVertex(glm::vec2 position);
 };

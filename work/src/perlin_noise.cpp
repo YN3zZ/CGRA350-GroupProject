@@ -107,7 +107,7 @@ void PerlinNoise::draw(const mat4& view, const mat4& proj, const mat4& lightSpac
 
 
 // For water interactions when colliding with terrain.
-GLuint PerlinNoise::createHeightMap() {
+void PerlinNoise::createHeightMap() {
 	// Store information in a vector.
 	std::vector<float> heightData(vertices.size());
 	for (size_t i = 0; i < vertices.size(); i++) {
@@ -128,7 +128,8 @@ GLuint PerlinNoise::createHeightMap() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-	return tex;
+	// Store for later.
+	heightMap = tex;
 }
 
 
@@ -227,7 +228,7 @@ void PerlinNoise::createMesh() {
 	terrain = mb.build();
 
 	// Create a heightMap for the water to collide with the terrain.
-	heightMap = createHeightMap();
+	createHeightMap();
 }
 
 
@@ -285,13 +286,6 @@ float PerlinNoise::generatePerlinNoise(vec2 pos, const vector<vec2> &octaveOffse
 // For drawing trees on the terrain.
 vec3 PerlinNoise::sampleVertex(vec2 position) {
 	int vertCount = meshResolution - 1;
-	//float x = ((position.x + 0.5f) / meshScale + 1.0f) * 0.5f;
-	//float y = ((position.y + 0.5f) / meshScale + 1.0f) * 0.5f;
-
-	// Old method mapped to the precise vertex.
-	//int i = std::clamp(int(x * (meshResolution - 1)), 0, meshResolution - 1);
-	//int j = std::clamp(int(y * (meshResolution - 1)), 0, meshResolution - 1);
-	//int index = i * meshResolution + j;
 
 	float x = position.x;
 	float y = position.y;
@@ -311,5 +305,5 @@ vec3 PerlinNoise::sampleVertex(vec2 position) {
 		}
 	}
 
-	return bestVert;
+	return bestVert - vec3(0, 0.2f, 0); // Move slightly into ground.
 }
