@@ -85,7 +85,7 @@ void Water::draw(const mat4& view, const mat4& proj,
 
 	// Send uniform for water speed and height.
 	glUniform1f(glGetUniformLocation(shader, "waterSpeed"), waterSpeed);
-	glUniform1f(glGetUniformLocation(shader, "waterHeight"), waterHeight); // For terrain collisions
+	glUniform1f(glGetUniformLocation(shader, "waterHeightProp"), waterHeightProp); // For terrain collisions
 	glUniform1f(glGetUniformLocation(shader, "waterAmplitude"), waterAmplitude);
 
 	// Re-bind water textures (fix for water texture disappering)

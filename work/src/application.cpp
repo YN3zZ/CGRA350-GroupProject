@@ -117,7 +117,7 @@ Application::Application(GLFWwindow *window) : m_window(window) {
     // Set terrain and water texture params after trees are generated to prevent visual bugs.
     m_terrain.setShaderParams();
     m_water.setShaderParams();
-	m_terrain.createHeightMap(m_water.waterHeight);
+	m_terrain.createHeightMap(m_water.waterHeightProp);
 
     // Build skybox shader
     shader_builder sb_skybox;
@@ -513,7 +513,8 @@ void Application::render() {
 		glEnable(GL_CLIP_DISTANCE0);
 
 		// Mirror camera across water plane
-		float waterHeight = m_water.waterHeight;
+		vec2 heightRange = m_terrain.heightRange;
+		float waterHeight = mix(heightRange.x, heightRange.y, m_water.waterHeightProp);
 		float distance = 2.0f * (cameraPosition.y - waterHeight);
 		vec3 reflectedCameraPos = cameraPosition;
 		reflectedCameraPos.y -= distance;
@@ -803,7 +804,7 @@ void Application::renderGUI() {
 			meshNeedsUpdate = true;
 			m_terrain.createMesh();
 			m_terrain.setShaderParams();
-			m_terrain.createHeightMap(m_water.waterHeight);
+			m_terrain.createHeightMap(m_water.waterHeightProp);
 			m_water.createMesh();
 			m_water.setShaderParams();
 			m_trees.regenerateOnTerrain(&m_terrain);
@@ -894,10 +895,10 @@ void Application::renderGUI() {
 
 	ImGui::Separator();
     if (ImGui::CollapsingHeader("Water Parameters")) {
-		if (ImGui::SliderFloat("Water Height", &m_water.waterHeight, 0.0f, 0.9f)) {
+		if (ImGui::SliderFloat("Water Height", &m_water.waterHeightProp, 0.0f, 0.9f)) {
 			m_water.createMesh();
 			m_water.setShaderParams();
-			m_terrain.createHeightMap(m_water.waterHeight);
+			m_terrain.createHeightMap(m_water.waterHeightProp);
 			m_trees.regenerateOnTerrain(&m_terrain);
 		}
 		ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
