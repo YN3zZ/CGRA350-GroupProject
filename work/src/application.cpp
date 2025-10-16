@@ -753,310 +753,321 @@ void Application::render() {
 void Application::renderGUI() {
     // setup window
     ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiSetCond_Once);
-    ImGui::SetNextWindowSize(ImVec2(400, 950), ImGuiSetCond_Once); // (width, height)
+    ImGui::SetNextWindowSize(ImVec2(400, 900), ImGuiSetCond_Once); // (width, height)
     ImGui::Begin("Options", 0);
 
     // display current camera parameters
     ImGui::Text("Application %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
-    ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
-    ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
-    ImGui::Checkbox("First person camera", &firstPersonCamera);
-    ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.01f, 0.5f, "%.2f");
-
-    // helpful drawing options
+    
+	// helpful drawing options
     ImGui::Checkbox("Show axis", &m_show_axis);
     ImGui::SameLine();
     ImGui::Checkbox("Show grid", &m_show_grid);
-    ImGui::Checkbox("Wireframe", &m_showWireframe);
-    ImGui::SameLine();
-    if (ImGui::Button("Screenshot")) rgba_image::screenshot(true);
+    
+	if (ImGui::Button("Screenshot")) rgba_image::screenshot(true);
+
+    if (ImGui::CollapsingHeader("Camera Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::Checkbox("First person camera", &firstPersonCamera);
+		ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.01f, 0.5f, "%.2f");
+
+		if (!firstPersonCamera) {
+			ImGui::SliderFloat("Pitch", &m_pitch, -pi<float>() / 2, pi<float>() / 2, "%.2f");
+			ImGui::SliderFloat("Yaw", &m_yaw, -pi<float>(), pi<float>(), "%.2f");
+			ImGui::SliderFloat("Distance", &m_distance, 0, 2000, "%.2f", 2.0f);
+		}
+	}
 
     ImGui::Separator();
-    ImGui::Text("Terrain Generation");
-    
-	// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
-	ImGui::SliderInt("Seed", &m_terrain.noiseSeed, 0, 100, "%.0f");
-	ImGui::SliderFloat("Persistence", &m_terrain.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
-	ImGui::SliderFloat("Lacunarity", &m_terrain.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
-	ImGui::SliderFloat("Noise Scale", &m_terrain.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
-	ImGui::SliderInt("Octaves", &m_terrain.noiseOctaves, 1, 10, "%.0f");
-	ImGui::SliderFloat("Mesh Height", &m_terrain.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
-    // Water is the same size and resolution as the terrain.
-    if (ImGui::SliderFloat("Mesh Size", &m_terrain.meshScale, 2.0f, 500.0f, "%.1f", 4.0f)) {
-        m_water.meshScale = m_terrain.meshScale; // Water is the same size as the terrain.
-    }
-    if (ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f")) {
-        m_water.meshResolution = m_terrain.meshResolution;
-    }
-	ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 1.0f, 200.0f, "%.1f");
-
 	bool meshNeedsUpdate = false;
-	// Generates the mesh and shaders for terrain and water.
-	if (ImGui::Button("Generate")) {
-		meshNeedsUpdate = true;
-		m_terrain.createMesh();
-		m_terrain.setShaderParams();
-		m_water.createMesh();
-		m_water.setShaderParams();
-		m_cached_water_height = m_water.waterHeight;
-	}
+    if (ImGui::CollapsingHeader("Terrain Generation", ImGuiTreeNodeFlags_DefaultOpen)) {
+		// Temporary UI control of noise to be replaced with the node-based UI. Regenerates model when parameters changed.
+		ImGui::SliderInt("Seed", &m_terrain.noiseSeed, 0, 100, "%.0f");
+		ImGui::SliderFloat("Persistence", &m_terrain.noisePersistence, 0.01f, 0.8f, "%.2f", 0.5f);
+		ImGui::SliderFloat("Lacunarity", &m_terrain.noiseLacunarity, 1.0f, 4.0f, "%.2f", 2.0f);
+		ImGui::SliderFloat("Noise Scale", &m_terrain.noiseScale, 0.01f, 2.0f, "%.2f", 3.0f);
+		ImGui::SliderInt("Octaves", &m_terrain.noiseOctaves, 1, 10, "%.0f");
+		ImGui::SliderFloat("Mesh Height", &m_terrain.meshHeight, 0.1f, 100.0f, "%.1f", 3.0f);
+		// Water is the same size and resolution as the terrain.
+		if (ImGui::SliderFloat("Mesh Size", &m_terrain.meshScale, 2.0f, 500.0f, "%.1f", 4.0f)) {
+			m_water.meshScale = m_terrain.meshScale; // Water is the same size as the terrain.
+		}
+		if (ImGui::SliderInt("Mesh Resolution", &m_terrain.meshResolution, 10, 500, "%.0f")) {
+			m_water.meshResolution = m_terrain.meshResolution;
+		}
+		ImGui::SliderFloat("Texture Size", &m_terrain.textureScale, 1.0f, 200.0f, "%.1f");
 
-	// Texture chooser.
-	const char* textureNames[] = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
-	int textureCount = 7;
-	ImGui::Text("Terrain textures (bottom up)");
-	// Choose the textures out of the options (string names).
-	for (int i = 0; i < m_terrain.textureAmount; i++) {
-		if (ImGui::Combo(("Texture " + std::to_string(i + 1)).c_str(), &m_terrain.chosenTextures[i], textureNames, textureCount)) {
+		// Generates the mesh and shaders for terrain and water.
+		if (ImGui::Button("Generate")) {
+			meshNeedsUpdate = true;
+			m_terrain.createMesh();
 			m_terrain.setShaderParams();
+			m_water.createMesh();
+			m_water.setShaderParams();
+			m_cached_water_height = m_water.waterHeight;
+			m_trees.regenerateOnTerrain(&m_terrain);
 		}
-	}
-	// Add or remove textures. Between 1 and the textureLimit.
-	if (ImGui::Button("   +   ")) {
-		m_terrain.textureAmount += m_terrain.textureAmount < m_terrain.textureLimit ? 1 : 0;
-		m_terrain.setShaderParams();
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("   -   ")) {
-		m_terrain.textureAmount -= m_terrain.textureAmount > 1 ? 1 : 0;
-		m_terrain.setShaderParams();
-	}
 
-	ImGui::Separator();
-    ImGui::Text("Water Parameters");
-    ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
-    ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
-    ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 0.15f);
-	ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.15f, "%.3f", 4.0f);
-	ImGui::Checkbox("Enable Water Reflections", &m_enable_water_reflections);
-	if (m_enable_water_reflections) {
-		ImGui::SliderFloat("Wave Distortion Strength", &m_water_wave_strength, 0.0f, 0.3f, "%.3f");
-		ImGui::SliderFloat("Reflection Blend", &m_water_reflection_blend, 0.0f, 1.0f, "%.2f");
-
-		const char* resolutions[] = {"960x540 (Half)", "1280x720 (HD)", "1920x1080 (Full HD)", "2560x1440 (2K)"};
-		int currentRes = 2;
-		if (m_water_fbo_width == 960) currentRes = 0;
-		else if (m_water_fbo_width == 1280) currentRes = 1;
-		else if (m_water_fbo_width == 1920) currentRes = 2;
-		else if (m_water_fbo_width == 2560) currentRes = 3;
-
-		if (ImGui::Combo("Reflection Resolution", &currentRes, resolutions, 4)) {
-			if (currentRes == 0) { m_water_fbo_width = 960; m_water_fbo_height = 540; }
-			else if (currentRes == 1) { m_water_fbo_width = 1280; m_water_fbo_height = 720; }
-			else if (currentRes == 2) { m_water_fbo_width = 1920; m_water_fbo_height = 1080; }
-			else if (currentRes == 3) { m_water_fbo_width = 2560; m_water_fbo_height = 1440; }
-
-			// Rebuild framebuffers with new resolution
-			// Delete old FBOs
-			glDeleteFramebuffers(1, &m_reflection_fbo);
-			glDeleteTextures(1, &m_reflection_texture);
-			glDeleteRenderbuffers(1, &m_reflection_depth_buffer);
-			glDeleteFramebuffers(1, &m_refraction_fbo);
-			glDeleteTextures(1, &m_refraction_texture);
-			glDeleteRenderbuffers(1, &m_refraction_depth_buffer);
-
-			// Recreate reflection FBO
-			glGenFramebuffers(1, &m_reflection_fbo);
-			glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
-			glGenTextures(1, &m_reflection_texture);
-			glBindTexture(GL_TEXTURE_2D, m_reflection_texture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_reflection_texture, 0);
-			glGenRenderbuffers(1, &m_reflection_depth_buffer);
-			glBindRenderbuffer(GL_RENDERBUFFER, m_reflection_depth_buffer);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_reflection_depth_buffer);
-
-			// Recreate refraction FBO
-			glGenFramebuffers(1, &m_refraction_fbo);
-			glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
-			glGenTextures(1, &m_refraction_texture);
-			glBindTexture(GL_TEXTURE_2D, m_refraction_texture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_refraction_texture, 0);
-			glGenRenderbuffers(1, &m_refraction_depth_buffer);
-			glBindRenderbuffer(GL_RENDERBUFFER, m_refraction_depth_buffer);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_refraction_depth_buffer);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		}
-	}
-
-	ImGui::Separator();
-	ImGui::Text("Sun, Lighting & Fog");
-	if (ImGui::SliderFloat("Sun Azimuth", &m_sunAzimuth, 0.0f, 360.0f, "%.1f°")) {
-		updateLightFromSun();
-	}
-	if (ImGui::SliderFloat("Sun Elevation", &m_sunElevation, -90.0f, 90.0f, "%.1f°")) {
-		updateLightFromSun();
-	}
-	if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
-		updateLightFromSun();
-	}
-	ImGui::Checkbox("Use fog", &useFog);
-	ImGui::SameLine();
-	const char* fogTypes[] = { "Linear", "Exponential" };
-	ImGui::Combo("Fog type", &fogType, fogTypes, 2);
-	ImGui::SliderFloat("Fog Density", &fogDensity, 0.001f, 0.1f, "%.3f", 2);
-
-	ImGui::Separator();
-	ImGui::Text("Shadow Settings");
-	ImGui::Checkbox("Enable Shadows", &m_enable_shadows);
-	if (m_enable_shadows) {
-		ImGui::Checkbox("Use PCF (Soft Shadows)", &m_use_pcf);
-		const char* shadowMapSizes[] = {"512", "1024", "2048", "4096"};
-		int currentSizeIndex = 0;
-		if (m_shadow_map_size == 512) currentSizeIndex = 0;
-		else if (m_shadow_map_size == 1024) currentSizeIndex = 1;
-		else if (m_shadow_map_size == 2048) currentSizeIndex = 2;
-		else if (m_shadow_map_size == 4096) currentSizeIndex = 3;
-
-		if (ImGui::Combo("Shadow Map Size", &currentSizeIndex, shadowMapSizes, 4)) {
-			int newSize = 2048;
-			if (currentSizeIndex == 0) newSize = 512;
-			else if (currentSizeIndex == 1) newSize = 1024;
-			else if (currentSizeIndex == 2) newSize = 2048;
-			else if (currentSizeIndex == 3) newSize = 4096;
-
-			if (newSize != m_shadow_map_size) {
-				m_shadow_map_size = newSize;
-				// Recreate shadow map texture with new size
-				// to make sure we're not interfering with any active texture units
-				GLint currentTexture;
-				glGetIntegerv(GL_ACTIVE_TEXTURE, &currentTexture);
-
-				glActiveTexture(GL_TEXTURE11);
-				glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_shadow_map_size, m_shadow_map_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-				// Enable shadow comparison mode for sampler2DShadow
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
-				// Restore previous active texture unit
-				glActiveTexture(currentTexture);
+		// Texture chooser.
+		const char* textureNames[] = { "sandyground", "patchy-meadow", "slatecliffrock", "pea-gravel", "barren-ground-rock", "dirtwithrocks", "ice_field" };
+		int textureCount = 7;
+		ImGui::Text("Terrain textures (bottom up)");
+		// Choose the textures out of the options (string names).
+		for (int i = 0; i < m_terrain.textureAmount; i++) {
+			if (ImGui::Combo(("Texture " + std::to_string(i + 1)).c_str(), &m_terrain.chosenTextures[i], textureNames, textureCount)) {
+				m_terrain.setShaderParams();
 			}
 		}
-	}
-
-	ImGui::Separator();
-	ImGui::Text("Lens Flare Settings");
-	ImGui::Checkbox("Enable Lens Flare", &m_enable_lens_flare);
-	if (m_enable_lens_flare) {
-		ImGui::Text("Bright Parts Extraction");
-		ImGui::SliderFloat("Brightness Threshold", &m_bright_threshold, 0.0f, 3.0f, "%.2f");
-		ImGui::Checkbox("Smooth Gradient", &m_bright_smooth_gradient);
-
-		ImGui::Text("Blur Settings");
-		ImGui::SliderInt("Blur Iterations", &m_blur_iterations, 1, 20);
-		ImGui::SliderFloat("Blur Intensity", &m_blur_intensity, 0.1f, 2.0f, "%.2f");
-
-		ImGui::Text("Ghost/Halo Settings");
-		const char* lensTypes[] = {"Ghost", "Halo", "Both"};
-		ImGui::Combo("Lens Type", &m_lens_flare_type, lensTypes, 3);
-		ImGui::Checkbox("Use Lens Texture", &m_lens_use_texture);
-		ImGui::SliderInt("Ghost Count", &m_ghost_count, 1, 32);
-		ImGui::SliderFloat("Ghost Dispersal", &m_ghost_dispersal, 0.0f, 0.75f, "%.2f");
-		ImGui::SliderFloat("Ghost Threshold", &m_ghost_threshold, 0.0f, 30.0f, "%.1f");
-		ImGui::SliderFloat("Ghost Distortion", &m_ghost_distortion, 0.0f, 10.0f, "%.1f");
-		ImGui::SliderFloat("Halo Radius", &m_halo_radius, 0.0f, 0.65f, "%.2f");
-		ImGui::SliderFloat("Halo Threshold", &m_halo_threshold, 0.0f, 30.0f, "%.1f");
-
-		ImGui::Text("Composite Settings");
-		ImGui::Checkbox("Use Lens Dirt/Starburst", &m_lens_use_dirt);
-		ImGui::SliderFloat("Global Brightness", &m_lens_global_brightness, 0.0f, 0.01f, "%.4f");
-	}
-
-	ImGui::Separator();
-	ImGui::Text("Bloom Settings");
-	ImGui::Checkbox("Enable Bloom", &m_enable_bloom);
-	if (m_enable_bloom) {
-		ImGui::Text("Bloom creates a glow effect around bright objects like the sun");
-		ImGui::SliderInt("Bloom Blur Iterations", &m_bloom_blur_iterations, 1, 20);
-		ImGui::SliderFloat("Bloom Blur Intensity", &m_bloom_blur_intensity, 0.1f, 5.0f, "%.2f");
-		ImGui::SliderFloat("Bloom Strength", &m_bloom_strength, 0.0f, 0.2f, "%.4f");
-		ImGui::Checkbox("Anamorphic Bloom (cinematic horizontal streaks)", &m_bloom_anamorphic);
-		if (m_bloom_anamorphic) {
-			ImGui::SliderFloat("Anamorphic Ratio", &m_bloom_anamorphic_ratio, 0.1f, 1.0f, "%.2f");
+		// Add or remove textures. Between 1 and the textureLimit.
+		if (ImGui::Button("   +   ")) {
+			m_terrain.textureAmount += m_terrain.textureAmount < m_terrain.textureLimit ? 1 : 0;
+			m_terrain.setShaderParams();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("   -   ")) {
+			m_terrain.textureAmount -= m_terrain.textureAmount > 1 ? 1 : 0;
+			m_terrain.setShaderParams();
 		}
 	}
 
     // L-System parameters that affect mesh generation
     ImGui::Separator();
-    ImGui::Text("L-System Parameters");
-    
-    // Tree placement parameters
-    if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 0, 200)) {
-        m_trees.regenerateOnTerrain(&m_terrain);
-    }
-    
-    if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
-        meshNeedsUpdate = true;
-    }
-    if (ImGui::SliderInt("Iterations", &m_trees.lSystem.iterations, 1, 5)) {
-        meshNeedsUpdate = true;
-    }
-    if (ImGui::SliderFloat("Step Length", &m_trees.lSystem.stepLength, 0.1f, 2.0f, "%.2f")) {
-        meshNeedsUpdate = true;
-    }
-    
-    // Tree type selection
-    const char* treeTypes[] = {"Simple", "Bushy", "Willow", "3D Tree"};
-    if (ImGui::Combo("Tree Type", &m_treeType, treeTypes, 4)) {
-        m_trees.setTreeType(m_treeType);
-        meshNeedsUpdate = true;
-    }
+    if (ImGui::CollapsingHeader("L-System Parameters")) {
+		// Tree placement parameters
+		if (ImGui::SliderInt("Tree Count", &m_trees.treeCount, 0, 200)) {
+			m_trees.regenerateOnTerrain(&m_terrain);
+		}
 
-    if (ImGui::SliderFloat("Branch Taper", &m_trees.branchTaper, 0.5f, 1.0f, "%.2f")) {
-        meshNeedsUpdate = true;
-    }
-    
-    // Placement parameters that don't affect mesh
-    bool placementNeedsUpdate = false;
-    
-    if (ImGui::SliderFloat("Min Scale", &m_trees.minTreeScale, 0.2f, 1.0f, "%.2f")) {
-        placementNeedsUpdate = true;
-    }
-    if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 6.0f, "%.2f")) {
-        placementNeedsUpdate = true;
-    }
-    if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {
-        placementNeedsUpdate = true;
-    }
+		if (ImGui::SliderFloat("Branch Angle", &m_trees.lSystem.angle, 10.0f, 45.0f, "%.1f")) {
+			meshNeedsUpdate = true;
+		}
+		if (ImGui::SliderInt("Iterations", &m_trees.lSystem.iterations, 1, 5)) {
+			meshNeedsUpdate = true;
+		}
+		if (ImGui::SliderFloat("Step Length", &m_trees.lSystem.stepLength, 0.1f, 2.0f, "%.2f")) {
+			meshNeedsUpdate = true;
+		}
 
-    ImGui::Separator();
-    ImGui::Text("Leaf Parameters");
+		// Tree type selection
+		const char* treeTypes[] = {"Simple", "Bushy", "Willow", "3D Tree"};
+		if (ImGui::Combo("Tree Type", &m_treeType, treeTypes, 4)) {
+			m_trees.setTreeType(m_treeType);
+			meshNeedsUpdate = true;
+		}
 
-    if (ImGui::Checkbox("Render Leaves", &m_trees.renderLeaves)) {
-        // Just visual toggle
-    }
-    if (ImGui::SliderFloat("Leaf Size", &m_trees.leafSize, 0.1f, 1.0f, "%.2f")) {
-        meshNeedsUpdate = true;
-    }
+		if (ImGui::SliderFloat("Branch Taper", &m_trees.branchTaper, 0.5f, 1.0f, "%.2f")) {
+			meshNeedsUpdate = true;
+		}
 
-    // Apply updates
-    if (meshNeedsUpdate) {
-        m_trees.markMeshDirty();
-        m_trees.regenerateOnTerrain(&m_terrain);
-    } else if (placementNeedsUpdate) {
-        m_trees.regenerateOnTerrain(&m_terrain);
-    }
+		// Placement parameters that don't affect mesh
+		bool placementNeedsUpdate = false;
+
+		if (ImGui::SliderFloat("Min Scale", &m_trees.minTreeScale, 0.2f, 1.0f, "%.2f")) {
+			placementNeedsUpdate = true;
+		}
+		if (ImGui::SliderFloat("Max Scale", &m_trees.maxTreeScale, 1.0f, 6.0f, "%.2f")) {
+			placementNeedsUpdate = true;
+		}
+		if (ImGui::Checkbox("Random Rotation", &m_trees.randomRotation)) {
+			placementNeedsUpdate = true;
+		}
+
+		ImGui::Separator();
+		ImGui::Text("Leaf Parameters");
+
+		if (ImGui::Checkbox("Render Leaves", &m_trees.renderLeaves)) {
+			// Just visual toggle
+		}
+		if (ImGui::SliderFloat("Leaf Size", &m_trees.leafSize, 0.1f, 1.0f, "%.2f")) {
+			meshNeedsUpdate = true;
+		}
+
+		// Apply updates
+		if (meshNeedsUpdate) {
+			m_trees.markMeshDirty();
+			m_trees.regenerateOnTerrain(&m_terrain);
+		} else if (placementNeedsUpdate) {
+			m_trees.regenerateOnTerrain(&m_terrain);
+		}
+	}
+
+	ImGui::Separator();
+    if (ImGui::CollapsingHeader("Water Parameters")) {
+		ImGui::SliderFloat("Water Height", &m_water.waterHeight, -5.0f, 2.0f);
+		ImGui::SliderFloat("Water Opacity", &m_water.waterAlpha, 0.0f, 1.0f);
+		ImGui::SliderFloat("Water Speed", &m_water.waterSpeed, 0.0f, 0.15f);
+		ImGui::SliderFloat("Water Amplitude", &m_water.waterAmplitude, 0.0f, 0.15f, "%.3f", 4.0f);
+		ImGui::Checkbox("Enable Water Reflections", &m_enable_water_reflections);
+		if (m_enable_water_reflections) {
+			ImGui::SliderFloat("Wave Distortion Strength", &m_water_wave_strength, 0.0f, 0.3f, "%.3f");
+			ImGui::SliderFloat("Reflection Blend", &m_water_reflection_blend, 0.0f, 1.0f, "%.2f");
+
+			const char* resolutions[] = {"960x540 (Half)", "1280x720 (HD)", "1920x1080 (Full HD)", "2560x1440 (2K)"};
+			int currentRes = 2;
+			if (m_water_fbo_width == 960) currentRes = 0;
+			else if (m_water_fbo_width == 1280) currentRes = 1;
+			else if (m_water_fbo_width == 1920) currentRes = 2;
+			else if (m_water_fbo_width == 2560) currentRes = 3;
+
+			if (ImGui::Combo("Reflection Resolution", &currentRes, resolutions, 4)) {
+				if (currentRes == 0) { m_water_fbo_width = 960; m_water_fbo_height = 540; }
+				else if (currentRes == 1) { m_water_fbo_width = 1280; m_water_fbo_height = 720; }
+				else if (currentRes == 2) { m_water_fbo_width = 1920; m_water_fbo_height = 1080; }
+				else if (currentRes == 3) { m_water_fbo_width = 2560; m_water_fbo_height = 1440; }
+
+				// Rebuild framebuffers with new resolution
+				// Delete old FBOs
+				glDeleteFramebuffers(1, &m_reflection_fbo);
+				glDeleteTextures(1, &m_reflection_texture);
+				glDeleteRenderbuffers(1, &m_reflection_depth_buffer);
+				glDeleteFramebuffers(1, &m_refraction_fbo);
+				glDeleteTextures(1, &m_refraction_texture);
+				glDeleteRenderbuffers(1, &m_refraction_depth_buffer);
+
+				// Recreate reflection FBO
+				glGenFramebuffers(1, &m_reflection_fbo);
+				glBindFramebuffer(GL_FRAMEBUFFER, m_reflection_fbo);
+				glGenTextures(1, &m_reflection_texture);
+				glBindTexture(GL_TEXTURE_2D, m_reflection_texture);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_reflection_texture, 0);
+				glGenRenderbuffers(1, &m_reflection_depth_buffer);
+				glBindRenderbuffer(GL_RENDERBUFFER, m_reflection_depth_buffer);
+				glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
+				glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_reflection_depth_buffer);
+
+				// Recreate refraction FBO
+				glGenFramebuffers(1, &m_refraction_fbo);
+				glBindFramebuffer(GL_FRAMEBUFFER, m_refraction_fbo);
+				glGenTextures(1, &m_refraction_texture);
+				glBindTexture(GL_TEXTURE_2D, m_refraction_texture);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_water_fbo_width, m_water_fbo_height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_refraction_texture, 0);
+				glGenRenderbuffers(1, &m_refraction_depth_buffer);
+				glBindRenderbuffer(GL_RENDERBUFFER, m_refraction_depth_buffer);
+				glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_water_fbo_width, m_water_fbo_height);
+				glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_refraction_depth_buffer);
+
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			}
+		}
+	}
+
+	ImGui::Separator();
+	if (ImGui::CollapsingHeader("Sun, Lighting & Fog")) {
+		if (ImGui::SliderFloat("Sun Azimuth", &m_sunAzimuth, 0.0f, 360.0f, "%.1f°")) {
+			updateLightFromSun();
+		}
+		if (ImGui::SliderFloat("Sun Elevation", &m_sunElevation, -90.0f, 90.0f, "%.1f°")) {
+			updateLightFromSun();
+		}
+		if (ImGui::SliderFloat("Sun Intensity", &m_sunIntensity, 0.5f, 3.0f, "%.2f")) {
+			updateLightFromSun();
+		}
+		ImGui::Checkbox("Use fog", &useFog);
+		ImGui::SameLine();
+		const char* fogTypes[] = { "Linear", "Exponential" };
+		ImGui::Combo("Fog type", &fogType, fogTypes, 2);
+		ImGui::SliderFloat("Fog Density", &fogDensity, 0.001f, 0.1f, "%.3f", 2);
+	}
+
+	ImGui::Separator();
+	if (ImGui::CollapsingHeader("Shadow Settings")) {
+		ImGui::Checkbox("Enable Shadows", &m_enable_shadows);
+		if (m_enable_shadows) {
+			ImGui::Checkbox("Use PCF (Soft Shadows)", &m_use_pcf);
+			const char* shadowMapSizes[] = {"512", "1024", "2048", "4096"};
+			int currentSizeIndex = 0;
+			if (m_shadow_map_size == 512) currentSizeIndex = 0;
+			else if (m_shadow_map_size == 1024) currentSizeIndex = 1;
+			else if (m_shadow_map_size == 2048) currentSizeIndex = 2;
+			else if (m_shadow_map_size == 4096) currentSizeIndex = 3;
+
+			if (ImGui::Combo("Shadow Map Size", &currentSizeIndex, shadowMapSizes, 4)) {
+				int newSize = 2048;
+				if (currentSizeIndex == 0) newSize = 512;
+				else if (currentSizeIndex == 1) newSize = 1024;
+				else if (currentSizeIndex == 2) newSize = 2048;
+				else if (currentSizeIndex == 3) newSize = 4096;
+
+				if (newSize != m_shadow_map_size) {
+					m_shadow_map_size = newSize;
+					// Recreate shadow map texture with new size
+					// to make sure we're not interfering with any active texture units
+					GLint currentTexture;
+					glGetIntegerv(GL_ACTIVE_TEXTURE, &currentTexture);
+
+					glActiveTexture(GL_TEXTURE11);
+					glBindTexture(GL_TEXTURE_2D, m_shadow_map_texture);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, m_shadow_map_size, m_shadow_map_size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+					float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+					glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+					// Enable shadow comparison mode for sampler2DShadow
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+					// Restore previous active texture unit
+					glActiveTexture(currentTexture);
+				}
+			}
+		}
+	}
+
+	ImGui::Separator();
+	if (ImGui::CollapsingHeader("Lens Flare Settings")) {
+		ImGui::Checkbox("Enable Lens Flare", &m_enable_lens_flare);
+		if (m_enable_lens_flare) {
+			ImGui::Text("Bright Parts Extraction");
+			ImGui::SliderFloat("Brightness Threshold", &m_bright_threshold, 0.0f, 3.0f, "%.2f");
+			ImGui::Checkbox("Smooth Gradient", &m_bright_smooth_gradient);
+
+			ImGui::Text("Blur Settings");
+			ImGui::SliderInt("Blur Iterations", &m_blur_iterations, 1, 20);
+			ImGui::SliderFloat("Blur Intensity", &m_blur_intensity, 0.1f, 2.0f, "%.2f");
+
+			ImGui::Text("Ghost/Halo Settings");
+			const char* lensTypes[] = {"Ghost", "Halo", "Both"};
+			ImGui::Combo("Lens Type", &m_lens_flare_type, lensTypes, 3);
+			ImGui::Checkbox("Use Lens Texture", &m_lens_use_texture);
+			ImGui::SliderInt("Ghost Count", &m_ghost_count, 1, 32);
+			ImGui::SliderFloat("Ghost Dispersal", &m_ghost_dispersal, 0.0f, 0.75f, "%.2f");
+			ImGui::SliderFloat("Ghost Threshold", &m_ghost_threshold, 0.0f, 30.0f, "%.1f");
+			ImGui::SliderFloat("Ghost Distortion", &m_ghost_distortion, 0.0f, 10.0f, "%.1f");
+			ImGui::SliderFloat("Halo Radius", &m_halo_radius, 0.0f, 0.65f, "%.2f");
+			ImGui::SliderFloat("Halo Threshold", &m_halo_threshold, 0.0f, 30.0f, "%.1f");
+
+			ImGui::Text("Composite Settings");
+			ImGui::Checkbox("Use Lens Dirt/Starburst", &m_lens_use_dirt);
+			ImGui::SliderFloat("Global Brightness", &m_lens_global_brightness, 0.0f, 0.01f, "%.4f");
+		}
+	}
+
+	ImGui::Separator();
+	if (ImGui::CollapsingHeader("Bloom Settings")) {
+		ImGui::Checkbox("Enable Bloom", &m_enable_bloom);
+		if (m_enable_bloom) {
+			ImGui::Text("Bloom creates a glow effect around bright objects like the sun");
+			ImGui::SliderInt("Bloom Blur Iterations", &m_bloom_blur_iterations, 1, 20);
+			ImGui::SliderFloat("Bloom Blur Intensity", &m_bloom_blur_intensity, 0.1f, 5.0f, "%.2f");
+			ImGui::SliderFloat("Bloom Strength", &m_bloom_strength, 0.0f, 0.2f, "%.4f");
+			ImGui::Checkbox("Anamorphic Bloom (cinematic horizontal streaks)", &m_bloom_anamorphic);
+			if (m_bloom_anamorphic) {
+				ImGui::SliderFloat("Anamorphic Ratio", &m_bloom_anamorphic_ratio, 0.1f, 1.0f, "%.2f");
+			}
+		}
+	}
 
 	// finish creating window
 	ImGui::End();
