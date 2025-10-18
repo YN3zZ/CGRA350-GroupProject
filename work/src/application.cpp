@@ -489,6 +489,7 @@ void Application::renderScene(const mat4& view, const mat4& proj, const mat4& li
 	}
 }
 
+
 void Application::render() {
 
 	// 1st pass: Shadow map (must be first so reflections/refractions can use it)
@@ -540,7 +541,7 @@ void Application::render() {
 		mat4 proj = perspective(1.f, float(width) / height, 0.1f, 5000.f);
 
 		mat4 lightSpaceMatrix = getLightSpaceMatrix();
-		vec4 clipPlane(0.0f, 1.0f, 0.0f, -waterHeight + 0.1f); // Clip below water.
+		vec4 clipPlane(0.0f, 1.0f, 0.0f, -waterHeight - 0.30f); // Clip below water.
 
 		renderScene(reflectionView, proj, lightSpaceMatrix, true, clipPlane);
 
@@ -580,7 +581,7 @@ void Application::render() {
 		}
 
 		lightSpaceMatrix = getLightSpaceMatrix();
-		clipPlane = vec4(0.0f, -1.0f, 0.0f, waterHeight + 0.1f); // Clip above water
+		clipPlane = vec4(0.0f, -1.0f, 0.0f, waterHeight + 0.15f); // Clip above water
 
 		renderScene(view, proj, lightSpaceMatrix, true, clipPlane);
 
@@ -770,7 +771,7 @@ void Application::renderGUI() {
     ImGui::Checkbox("Show axis", &m_show_axis);
     ImGui::SameLine();
     ImGui::Checkbox("Show grid", &m_show_grid);
-    
+
 	if (ImGui::Button("Screenshot")) rgba_image::screenshot(true);
 
     if (ImGui::CollapsingHeader("Camera Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
