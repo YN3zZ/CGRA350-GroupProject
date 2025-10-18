@@ -186,7 +186,7 @@ void main() {
 	float distance = abs(terrainHeight - waterHeight);
 	float depthFactor = clamp(distance, 0.0f, 1.0f); // 0 is shore, 1 is deep.
 	// Make it less intense for final light highlight color.
-	float sharpness = 4.0f;
+	float sharpness = 1.5f;
 	float shallowHighlight = 0.9f + clamp(depthFactor * sharpness, 0.0f, 1.0f) / 10.0f;
 
 	// Sky color. May make controllable later.
@@ -290,7 +290,7 @@ void main() {
 		refractionColor = texture(uRefractionTexture, refractCoords);
 	}
 
-	float fresnelFactor = pow(1.0f - NdotV, 2.0f);
+	float fresnelFactor = pow(1.0f - max(NdotV, 0.0f), 2.5f);
 	vec3 environmentColor = mix(refractionColor.rgb, reflectionColor.rgb, fresnelFactor);
 
 
@@ -321,14 +321,15 @@ void main() {
 
 	// Add ambient light to diffuse and specular, applying shadow to diffuse and specular only
 	vec3 finalColor = ambient + shadow * (diffuse + specular);
+	vec3 initialColor = finalColor;
 
 	if (uEnableReflections) {
 		// Mix environment color with PBR lighting, ReflectionBlend controls how much
 		finalColor = mix(environmentColor, finalColor, 1.0 - uReflectionBlend) + specular * 0.5;
 	}
 
+	finalColor = mix(lightColor * 0.6f + initialColor * 0.4f, finalColor, shallowHighlight); // Terrain interaction.
 	finalColor = mix(fogColor, finalColor, fogFactor); // Add fog.
-	finalColor = mix(lightColor, finalColor, shallowHighlight); // Terrain interaction.
 
 	// Allow HDR values (up to 1.5) when lens flare is active to enable bright reflections to create flare
 	float maxBrightness = uEnableLensFlare ? 1.5f : 1.0f;
