@@ -132,15 +132,15 @@ private:
 	int m_lens_flare_type = 2;  // 0=Ghost, 1=Halo, 2=Both
 	bool m_lens_use_texture = true;
 	int m_ghost_count = 5;
-	float m_ghost_dispersal = 0.7f;
-	float m_ghost_threshold = 12.0f;
-	float m_ghost_distortion = 7.5f;
-	float m_halo_radius = 0.4f;
-	float m_halo_threshold = 20.0f;
+	float m_ghost_dispersal = 0.39f;
+	float m_ghost_threshold = 10.0f;
+	float m_ghost_distortion = 4.3f;
+	float m_halo_radius = 0.3f;
+	float m_halo_threshold = 9.0f;
 	bool m_lens_use_dirt = false;
-	float m_lens_global_brightness = 0.0015f;
-	int m_blur_iterations = 20;
-	float m_blur_intensity = 0.5f;
+	float m_lens_global_brightness = 0.0008f;
+	int m_blur_iterations = 10;
+	float m_blur_intensity = 1.0f;
 	int m_lens_flare_fbo_width = 0;
 	int m_lens_flare_fbo_height = 0;
 

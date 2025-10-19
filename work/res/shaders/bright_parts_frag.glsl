@@ -14,15 +14,18 @@ out vec4 fragColor;
 void main() {
     vec4 color = texture(uSceneTexture, vTexCoord);
 
-    // Calculate luminance using standard weights
     float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
 
     if (uSmoothGradient) {
-        // Smooth gradient falloff with proper thresholding
-        // Map brightness above threshold to [0,1] range, then apply smooth curve
-        float t = max(0.0, brightness - uThreshold);
-        float smoothFactor = smoothstep(0.0, 0.5, t);
-        fragColor = color * smoothFactor;
+        // Smooth gradient falloff
+        // Apply cubic power to the brightness for smooth falloff
+        float b = brightness;
+        if (b > uThreshold) {
+            // Only keep the brightest parts, with smooth cubic falloff
+            fragColor = color * b * b * b;
+        } else {
+            fragColor = vec4(0.0);
+        }
     } else {
         // Hard threshold
         if (brightness > uThreshold) {

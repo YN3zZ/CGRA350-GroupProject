@@ -1070,7 +1070,7 @@ void Application::renderGUI() {
 
 			ImGui::Text("Composite Settings");
 			ImGui::Checkbox("Use Lens Dirt/Starburst", &m_lens_use_dirt);
-			ImGui::SliderFloat("Global Brightness", &m_lens_global_brightness, 0.0f, 0.01f, "%.4f");
+			ImGui::SliderFloat("Global Brightness", &m_lens_global_brightness, 0.0005f, 0.0015f, "%.4f");
 		}
 	}
 
@@ -1526,7 +1526,11 @@ void Application::compositeLensFlare(GLuint sceneTexture) {
 	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uBloomTexture"), 4);
 
 	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uUseDirt"), m_lens_use_dirt);
-	glUniform1f(glGetUniformLocation(m_lens_flare_composite_shader, "uGlobalBrightness"), m_lens_global_brightness);
+
+	float sunVisibility = glm::max(0.0f, m_sunElevation / 90.0f);
+	float effectiveBrightness = m_lens_global_brightness * m_sunIntensity * (0.8f + 0.2f * sunVisibility);
+	glUniform1f(glGetUniformLocation(m_lens_flare_composite_shader, "uGlobalBrightness"), effectiveBrightness);
+
 	glUniform1i(glGetUniformLocation(m_lens_flare_composite_shader, "uEnableBloom"), m_enable_bloom);
 	glUniform1f(glGetUniformLocation(m_lens_flare_composite_shader, "uBloomStrength"), m_bloom_strength);
 

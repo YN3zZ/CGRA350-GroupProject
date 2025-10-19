@@ -21,15 +21,19 @@ void main() {
     vec3 result = texture(uTexture, vTexCoord).rgb * weight[0];
 
     if (uHorizontal) {
+        // Horizontal blur pass
         for (int i = 1; i < 5; ++i) {
-            result += texture(uTexture, vTexCoord + vec2(texelSize.x * float(i) * uIntensity, 0.0)).rgb * weight[i];
-            result += texture(uTexture, vTexCoord - vec2(texelSize.x * float(i) * uIntensity, 0.0)).rgb * weight[i];
+            float offset = texelSize.x * float(i) * uIntensity;
+            result += texture(uTexture, vTexCoord + vec2(offset, 0.0)).rgb * weight[i];
+            result += texture(uTexture, vTexCoord - vec2(offset, 0.0)).rgb * weight[i];
         }
     } else {
+        // Vertical blur pass with optional anamorphic scaling
         float verticalIntensity = uAnamorphic ? (uIntensity * uAnamorphicRatio) : uIntensity;
         for (int i = 1; i < 5; ++i) {
-            result += texture(uTexture, vTexCoord + vec2(0.0, texelSize.y * float(i) * verticalIntensity)).rgb * weight[i];
-            result += texture(uTexture, vTexCoord - vec2(0.0, texelSize.y * float(i) * verticalIntensity)).rgb * weight[i];
+            float offset = texelSize.y * float(i) * verticalIntensity;
+            result += texture(uTexture, vTexCoord + vec2(0.0, offset)).rgb * weight[i];
+            result += texture(uTexture, vTexCoord - vec2(0.0, offset)).rgb * weight[i];
         }
     }
 
